@@ -1,1 +1,7 @@
-MD simulation of charge-density waves (CDWs) tunnelling through lattice impurities.
+MD simulation of charge-density waves (CDWs) tunnelling through lattice 
+impurities.
+
+TODO:
+- run a simulation with few sights and no impurities. 
+- achieve uniformly changing phase with no impurities and a small DC field 
+- achieve uniformly changing phase with no impurities and stochastic forcing.
