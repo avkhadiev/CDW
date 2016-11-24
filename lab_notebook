@@ -1,0 +1,45 @@
+Thu Nov 24 11:28:44 EST 2016
+
+     TODO: need a convenient way to characterize a transition
+           phases are fixed at the impurity sites; visually, a transition 
+           would look like a rapid movement of a part a wave from one 
+           impurity site to another, but it is not clear how to track that
+    
+           via site-specific phase values. 
+           e.g., one could track the phase value at the impurity, 
+           and save a pair of numbers 
+    
+           ( abs( phi - beta mod 2 ) pi - pi/2 , time ) 
+    
+           to then graph a time evolution of the phase as a function of time.
+           call the first number "phi_trans"
+    
+           Thus, a phase transition is an event that:
+              - in its time span contains the moment 
+                  t_switch when sin( phi_trans ) = 0
+              - starts t_start: the earliest moment before t_switch when 
+                  sin( phi_trans ) = +1 or -1
+              - ends when t_end: the earliest moment after t_switch when
+                  sin( phi_trans ) = -1 or +1
+              - does not contain 
+                  sin( phi_trans ) = +1 or -1 between t_switch and t_end.
+
+Thu Nov 24 12:14:27 EST 2016
+
+        Moreover, one could use the above formula --
+            
+            sin( (abs( phi_j - beta_j ) mod 2 pi) - pi/2 )
+
+        To visualize motion of phases at each site. If we have no impurities 
+        and a small electric field, this function at each site will be 
+        changing smoothly from -1 to 0 to 1, down from 1 to 0 to -1, and so on.
+
+
+Thu Nov 24 12:44:07 EST 2016
+        
+    
+      TODO: make sure each simulation provides the following statistics:
+               - mean transition time per impurity 
+               - mean velocity of the phase during transition per impurity
+               - mean number of transitions per unit time per impurity
+     
