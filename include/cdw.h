@@ -17,27 +17,89 @@
 // simulation-dependent constants
 #define MAX_SITES       1000                        // max num of lattice sites
 #define MIN_SITES       2                           // min num of lattice sites
-#define TEMPERATURE     100                         // default temperature, K
-#define INITIAL_TIME    0                           // simulation start time
-#define TIME_STEP       0.001                       // default time step
-#define NUM_STEPS       1000                        // number of time steps
-// model-dependent constants
 #define MAX_IM_STRENGTH 3                           // max impurity strength
+#define DEF_INI_TIME    0                           // simulation start time
+#define DEF_TIME_STEP   0.001                       // default time step
+#define DEF_NUM_STEPS   1000                        // number of time steps
+// model-dependent constants
+#define DEF_SITES       12                          // default num of sites
+#define DEF_IM_STRENGTH 1                           // default strength
 #define DEF_IM_PHASE    0                           // default pinning phase
+#define DEF_IM_SPACING  3                           // default impurity spacing
+#define DEF_INI_PHASE   0                           // default initial phase
+#define DEF_J_STRENGTH  1                           // default elasticity 
+#define DEF_TEMPERATURE 100                         // default temperature, K
 #define DEF_ELASTICITY  1                           // default CDW elasticity
-#define DC_FIELD        0                           // dc electric field
+#define DEF_DC_FIELD    0                           // dc electric field
 
+/*
+ * CDW PHASE
+ *
+ * struct to represent CDW phase at each lattice site 
+ *
+ *      - specifies the value of the phase
+ *      - specifies current rate of change of the phase
+ */
+typedef struct {
+    double  phase          ;     // not restricted to 2 Pi
+    double  rate_of_change ;     // initially 0
+} Phase;
+
+/*
+ * LATTICE SITE
+ *
+ * struct to represent discretized lattice spacing
+ *
+ *      - can contain an impurity, in which case 
+ *      - specifies impurity strength
+ *      - specifies impurity phase (the CDW phase to pin).
+ */
+struct LatticeSite;
+
+struct LatticeSite{
+    int     is_impurity      ;              // 0 if doesn't, 1 if does
+    double  im_strength      ;              // between 0 and 1
+    double  im_phase         ;              // between 0 and 2 Pi
+    Phase   phase            ;              // hosts a phase 
+    LatticeSite * const next ;              // pointer to next site
+    LatticeSite * const prev ;              // pointer to prev site
+};
+
+typedef struct LatticeSite LatticeSite;
+
+/*
+ * OBSERVED PHASE
+ *
+ * struct to represent phase behavior at an observed site
+ */
+typedef struct {
+    // sin ( [ abs( phi - beta ) mod 2 pi ] - pi/2 ) 
+    double observed_phase ; 
+    // time at which the the observed phase is recorded
+    double observed_time  ;
+} ObservedPhase;
+
+/*
+ * Class CDW
+ */
 class CDW {
     public:
 
     // constructor, destructor
-        CDW();                                       // constructor
-        virtual ~CDW() = {} ;                        // destructor
+        CDW( void );                                 // constructor
+        virtual ~CDW( void );                        // destructor
 
     // simulation settings
+        
+        // set parameters
         int set_ini_time    ( double ini_time    ) ; // initial time
         int set_time_step   ( double time_step   ) ; // length of time step
         int set_num_steps   ( size_t num_steps   ) ; // number of time steps
+
+        // get parameters
+        double get_ini_time  ( void ) { return ini_time  ;}
+        double get_time_step ( void ) { return time_step ;}
+        size_t get_num_steps ( void ) { return num_steps ;}
         
     // initial conditions setting and generation
 
@@ -45,30 +107,36 @@ class CDW {
         int set_num_sites   ( size_t num_sites   ) ; // number of lattice sites
         int set_im_spacing  ( size_t im_spacing  ) ; // impurity spacing
         int set_im_strength ( double im_strength ) ; // impurity strength 
-        int set_ini_phase   ( double phase       ) ; // initial phases
-        int set_temperature ( double temp        ) ; // temperature
-        int set_j_model     ( char *j_model      ) ; // elasticity model
-        int set_j           ( double j           ) ; // elasticity coefficient
-        int set_noise_model ( char *noise_model  ) ; // TODO noise model
+        int set_ini_phase   ( double ini_phase   ) ; // initial phases
+        int set_temperature ( double temperature ) ; // temperature
+        int set_j_model     ( std::string j_model) ; // elasticity model
+        int set_j_strength  ( double j_strength  ) ; // elasticity coefficient
+        int set_noise_model ( std::string noise_model ) ; // TODO noise model
         int set_noise       ( double noise       ) ; // TODO noise intensity
         int set_dc_field    ( double dc_field    ) ; // dc electric field
 
-        // display parameters 
-        int get_num_sites    ( void ) ;              // number of lattice sites
-        int get_im_spacing   ( void ) ;              // impurity spacing
-        int get_im_strength  ( void ) ;              // impurity strength 
-        int get_ini_phase    ( void ) ;              // initial phases
-        int get_temperature  ( void ) ;              // temperature
-        int get_j_model      ( void ) ;              // elasticity model
-        int get_j            ( void ) ;              // elasticity coefficient
-        int get_noise_model  ( void ) ;              // TODO noise model
-        int get_noise        ( void ) ;              // TODO noise intensity
-        int get_dc_field     ( void ) ;              // dc electric field
-        int display_settings ( void ) ;              // display all settings
+        // get parameters 
+        size_t      get_num_sites    ( void ) { return num_sites   ; }          
+        size_t      get_im_spacing   ( void ) { return im_spacing  ; }               
+        double      get_im_strength  ( void ) { return im_strength ; }               
+        double      get_ini_phase    ( void ) { return ini_phase   ; }               
+        double      get_temperature  ( void ) { return temperature ; }               
+        std::string get_j_model      ( void ) { return j_model     ; }               
+        double      get_j_strength   ( void ) { return j_strength  ; }               
+        std::string get_noise_model  ( void ) { return "STUB"      ; } // TODO              
+        std::string get_noise        ( void ) { return "STUB"      ; } // TODO      
+        double      get_dc_field     ( void ) { return dc_field    ; } 
+        
+        // vector values
+        const std::vector<LatticeSite> get_lattice () { return lattice ; }
+        
+        // print out all the settings
+        void display_settings ( void );               
         
         // generate initial conditions -- 
         // is_setup should be set to 0
         int setup            ( void ) ;              // will set is_setup to 1
+        int uninstall        ( void ) ;              // will set is_setup to 0
 
         // display lattice
         int show_impurities  ( void ) ; 
@@ -87,39 +155,16 @@ class CDW {
 
     // SIMULATION SETTINGS AND DATA STRUCTURES
    
-        int is_setup                                // was the simulation set?
+        int is_setup;                               // was the simulation set?
                                                     // 1 if was, 0 otherwise
+       
         /*
-         * CDW PHASE
+         * INITIAL PHASE
          *
-         * struct to represent CDW phase at each lattice site 
-         *
-         *      - specifies the value of the phase
-         *      - specifies current rate of change of the phase
-         *      - specifies the lattice on which the phase is located 
+         * initial phase assigned to phases at all sites;
          */
-        typedef struct {
-            double              phase          ;     // not restricted to 2 Pi
-            double              rate_of_change ;     // initially 0
-            LatticeSite * const lattice_site   ;     // const position
-        } Phase;
-
-        /*
-         * LATTICE SITE
-         *
-         * struct to represent discretized lattice spacing
-         *
-         *      - can contain an impurity, in which case 
-         *      - specifies impurity strength
-         *      - specifies impurity phase (the CDW phase to pin).
-         */
-        typedef struct {
-            int     is_impurity ;                   // 0 if doesn't, 1 if does
-            double  im_strength ;                   // between 0 and 1
-            double  im_phase    ;                   // between 0 and 2 Pi
-            Phase * const phase ;                   // hosts a constant phase       
-        } LatticeSite;
-        
+        double ini_phase;
+                                                    
         /*
          * NUMBER OF LATTICE SITES
          */ 
@@ -133,27 +178,25 @@ class CDW {
          *      lattice     -- contains pointers to all lattice sites
          *      impurities  -- contains pointers to the sites with impurities
          */
-        std::vector<LatticeSite *> lattice( num_sites );
+        std::vector<LatticeSite> lattice;
         std::vector<LatticeSite *> impurities;
         
-        /*
-         * PHASE ARRAY
-         *
-         * contains pointers to all phases
-         */
-        std::vector<Phase *> phases( num_sites );
-
         /*
          * DISTANCE BETWEEN IMPURITIES
          */
         size_t im_spacing ;                         // units: number of sites
         
+        /*
+         * IMPURITY STRENGTH
+         */
+        size_t im_strength ;                        // impurity strength
+
     // MODEL PARAMETERS
         
         /* 
          * TEMPERATURE 
          */
-        double t = TEMPERATURE ;                    // temperature, K
+        static double temperature;                  // temperature, K
 
         /*
          * THERMAL NOISE
@@ -165,10 +208,9 @@ class CDW {
         /*
          * ELASTICITY MODELS
          */
-        const char* = "infinite range"           ;
-        const char* = "nearest neighbor"         ; 
-        const char* = "next to nearest neighbor" ;
-
+        double       j_strength ; 
+        std::string  j_model    ;
+        
         /*
          * ELASTICITY
          *
@@ -194,16 +236,28 @@ class CDW {
          *
          *      DC field strength
          */
-        double dc_field = DC_FIELD;
+        double dc_field;
+
+        /*
+         * GENERATE LATTICE
+         *
+         * input:
+         *      void
+         *
+         * output:
+         *      void
+         */
+        void generate_lattice ( void );
         
 
     // DYNAMICS PARAMETERS
         /*
          * TIME: START, NUMBER OF STEPS, LENGTH OF EACH STEP
          */
-        double time      = INITIAL_TIME ;            // keeps track of time
-        double time_step = TIME_STEP    ;            // length of each step
-        size_t num_steps = NUM_STEPS    ;            // number of steps
+        double ini_time  ;                            // specifies initial time
+        double time      ;                            // keeps track of time
+        double time_step ;                            // length of each step
+        size_t num_steps ;                            // number of steps
 
         /*
          *  RATE_OF_CHANGE
@@ -217,7 +271,7 @@ class CDW {
          *  output:
          *      const double, the calculated change in the phase
          */
-        inline const double rate_of_change( const *Phase phase ) ;
+        inline const double rate_of_change( const Phase *phase ) ;
 
         /*
          * UPDATE_PHASE
@@ -276,18 +330,6 @@ class CDW {
      */      
 
         /*
-         * OBSERVED PHASE
-         *
-         * struct to represent phase behavior at an observed site
-         */
-        typedef struct {
-            // sin ( [ abs( phi - beta ) mod 2 pi ] - pi/2 ) 
-            double observed_phase ; 
-            // time at which the the observed phase is recorded
-            double observed_time  ;
-        } ObservedPhase;
-
-        /*
          * GET OBSERVED PHASE
          *
          * given a Phase that records a state of a phase, and a time 
@@ -305,8 +347,8 @@ class CDW {
          *          at the corresponding time
          *      
          */
-        inline ObservedPhase get_observed_phase( const *Phase phase, 
-                                                        double time );
+        inline ObservedPhase get_observed_phase( const Phase *phase, 
+                                                    double time );
 
         /*
          * ARRAY OF OBSERVES PHASES
@@ -314,10 +356,10 @@ class CDW {
          * contain pointers to lattice cites for which the behavior of phases
          * is recorded
          */
-        std::vector<ObservedPhases *> observed_phases;
+        std::vector<ObservedPhase> observed_phases;
 
         /*
-         * OBSERVE PHASE
+         * ADD OBSERVED PHASE
          *
          * given a pointer to a Phase, add that phase in the array of 
          * phases to be observed
@@ -328,7 +370,7 @@ class CDW {
          * output:
          *      int, 0 on success, 1 on failure
          */
-        int observe_phase ( const *Phase phase );
+        int add_observed_phase ( const Phase *phase );
 
     // statistics
     /*
