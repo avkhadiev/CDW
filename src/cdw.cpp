@@ -333,19 +333,19 @@ CDW::~CDW( void ) {};
      *      void
      */
     void CDW::display_settings ( void ) {
-        printf("%s: %.3f\n", "initial time"       , get_ini_time()        ) ;    
-        printf("%s: %.3f\n", "time step"          , get_time_step()       ) ;    
-        printf("%s: %zu\n" , "number of steps"    , get_num_steps()       ) ;    
-        printf("%s: %zu\n" , "number of sites"    , get_num_sites()       ) ;    
-        printf("%s: %zu\n" , "impurity spacing"   , get_im_spacing()      ) ;    
-        printf("%s: %.3f\n", "impurity strength"  , get_im_strength()     ) ;    
-        printf("%s: %.3f\n", "initial phase"      , get_ini_phase()       ) ;    
-        printf("%s: %.3f\n", "temperature"        , get_temperature()     ) ;    
-        printf("%s: %s\n"  , "elasticity model"   , get_j_model().c_str() ) ;    
-        printf("%s: %.3f\n", "elasticity strength", get_j_strength()      ) ;    
-        printf("%s: %s\n"  , "noise model"        , "STUB"                ) ;   //TODO
-        printf("%s: %s\n"  , "noise intensity"    , "STUB"                ) ;   //TODO
-        printf("%s: %.3f\n", "DC electric field"  , get_dc_field()        ) ;    
+        printf("%s: %.3f\n", "initial time       " , get_ini_time()        ) ;    
+        printf("%s: %.3f\n", "time step          " , get_time_step()       ) ;    
+        printf("%s: %zu\n" , "number of steps    " , get_num_steps()       ) ;    
+        printf("%s: %zu\n" , "number of sites    " , get_num_sites()       ) ;    
+        printf("%s: %zu\n" , "impurity spacing   " , get_im_spacing()      ) ;    
+        printf("%s: %.3f\n", "impurity strength  " , get_im_strength()     ) ;    
+        printf("%s: %.3f\n", "initial phase      " , get_ini_phase()       ) ;    
+        printf("%s: %.3f\n", "temperature        " , get_temperature()     ) ;    
+        printf("%s: %s\n"  , "elasticity model   " , get_j_model().c_str() ) ;    
+        printf("%s: %.3f\n", "elasticity strength" , get_j_strength()      ) ;    
+        printf("%s: %s\n"  , "noise model        " , "STUB"                ) ;   //TODO
+        printf("%s: %s\n"  , "noise intensity    " , "STUB"                ) ;   //TODO
+        printf("%s: %.3f\n", "DC electric field  " , get_dc_field()        ) ;    
         return;
     }
 
@@ -420,6 +420,7 @@ CDW::~CDW( void ) {};
         }
 
         // generate an impurity:
+        // FIXME
         site->is_impurity = 1           ;               // is an impurity
         site->im_strength = im_strength ;               // specifed strength
         site->im_phase    = im_phase    ;               // specified phase 
@@ -439,8 +440,7 @@ CDW::~CDW( void ) {};
         // get required lattice dimensions 
         const size_t num_sites = (const size_t)get_num_sites();    
 
-        // clear and resize the lattice vector
-        this->lattice.clear();
+        // resize the lattice vector
         this->lattice.resize( num_sites );
 
         for(size_t i = 0; i < num_sites; ++i) {
@@ -486,13 +486,13 @@ CDW::~CDW( void ) {};
     
         this->impurities.clear();
 
-        LatticeSite required_site;              
-        for( size_t i = (im_spacing - 1); i < num_sites; i += i) {
-            required_site = this->lattice.at(i);
-            generate_impurity( &required_site, 
+        LatticeSite *required_site;              
+        for( size_t i = (im_spacing - 1); i < num_sites; i += im_spacing) {
+            required_site = &( this->lattice.at(i) );
+            generate_impurity( required_site, 
                                 im_strength, 
                                 im_phase );
-            this->impurities.push_back( &required_site );
+            this->impurities.push_back( required_site );
         }
         return 0;
     }
