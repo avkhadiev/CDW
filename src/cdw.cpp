@@ -9,6 +9,8 @@
 #include "include/cdw.h"
 
 #define UNUSED(x) (void)(x)
+const double PI = 3.141592653589793;
+const double TwoPI = 2 * PI; 
 
 // constructor
 CDW::CDW( void ) {
@@ -103,6 +105,35 @@ CDW::~CDW( void ) {};
  * the methods will fail if the simulation has already been set up -- 
  * i.e., if CDW::is_setup = 1;
  */
+
+    /*
+     * set number of sites
+     *
+     * specified number of sites should be between MIN_SITES and MAX_SITES
+     *
+     * input:
+     *      size_t num_sites, number of sites to initialize
+     *
+     * output:
+     *      int 0, on success, 1 on failure
+     */
+    int CDW::set_num_sites ( size_t num_sites ) {
+        if (is_setup) {
+            printf("%s\n", "The simulation has already been set up");
+            return 1;
+        }
+        if ( (num_sites < MIN_SITES) || (num_sites > MAX_SITES) ) {
+            printf("%s %d and %d\n", 
+                    "specified number of sites should be between",
+                    MIN_SITES,
+                    MAX_SITES);
+            return 1;
+        }
+        else {
+            CDW::num_sites = num_sites;
+            return 0;
+        }
+     }
 
     /*
      * set impurity spacing
@@ -314,6 +345,85 @@ CDW::~CDW( void ) {};
         return;
     }
 
+
+    /*
+     * INITIALIZE SITE
+     *
+     * given a pointer to LatticeSite, initializes it as a non-impurity
+     * site with a phase with zero velocity and value 
+     * specified by ini_phase
+     *
+     * input: 
+     *      LatticeSite *
+     *
+     * output: 
+     *      int, 0 on success, 1 on failure
+     */
+    int CDW::initialize_site( LatticeSite *site ) {
+       
+        if ( site == 0 ) {
+            printf("%s\n", "invalid pointer to LatticeSite");
+            return 1;
+        }
+
+        // initial phase has 0 velocity
+        Phase ini_phase = { get_ini_phase(), 0.0 };
+
+        site->is_impurity = 0         ;             // not an impurity 
+        site->im_strength = 0         ;             // impurity strength
+        site->im_phase    = 0         ;             // impurity phase
+        site->phase       = ini_phase ;             // initial phase at site
+
+        return 0;
+    }
+
+    /*
+     * GENERATE IMPURITY
+     *
+     * given a pointer to an initialized LatticeSite, makes it an
+     * impurity of specified phase and strength.
+     *
+     * input: 
+     *      LatticeSite *, pointer to a lattice cite
+     *      double im_strength, strength of the impurity, <= MAX_IM_STRENGTH
+     *      double im_phase,    phase of the impurity between 0 and 2 pi
+     *
+     * output: 
+     *      int, 0 on success, 1 on failure
+     */
+    int generate_impurity( LatticeSite *site, 
+                            double im_strength, 
+                            double im_phase  ) {
+    
+        if ( site == 0 ) {
+            printf("%s\n", "invalid pointer to LatticeSite");
+            return 1;
+        }
+    
+        if ( (im_phase < 0) || (im_phase > TwoPI) ) {
+            printf("phase value %f %s\n", 
+                        im_phase, 
+                        "is not between 0 and 2 pi");
+            return 1;
+        }
+        
+        if ( im_strength > MAX_IM_STRENGTH ) {
+            printf("strength value %f %s %d",
+                        im_strength,
+                        "is greater than the maximum",
+                        MAX_IM_STRENGTH);
+            return 1;
+        }
+
+        // generate an impurity:
+        site->is_impurity = 1           ;               // is an impurity
+        site->im_strength = im_strength ;               // specifed strength
+        site->im_phase    = im_phase    ;               // specified phase 
+    
+        return 0;
+    }
+    
+    
     /*
      * generate lattice
      *      - creates an vector of LatticeSite * specified by num_sites
@@ -321,22 +431,66 @@ CDW::~CDW( void ) {};
      *          im_spacing, im_strength, and im_phase.
      */
     void CDW::generate_lattice( void ) {
+
         // get required lattice dimensions 
         const size_t num_sites = (const size_t)get_num_sites();    
 
         // clear and resize the lattice vector
-        lattice.clear();
-        lattice.resize( num_sites );
+        this->lattice.clear();
+        this->lattice.resize( num_sites );
 
-        // initial phase has 0 velocity
-        Phase initial_phase = { get_ini_phase(), 0.0 };
-
-        // initialize first and last element of 
-        lattice.at(1).phase = initial_phase;
-        
         for(size_t i = 0; i < num_sites; ++i) {
-            lattice.at(i).phase = initial_phase;
+            initialize_site( &(lattice.at(i)) );
         }
+    }
+
+    /*
+     * ADD IMPURITIES 
+     * 
+     * TODO any random assignment of impurity strengths and phases can be 
+     *      implemented in this function
+     *
+     * given an impurity spacing and  generates impurities 
+     * in the lattice and fills a vector of pointers to them for reference.
+     *
+     * input:
+     *      size_t im_spacing, impurity spacing in units of lattice sites.
+     *
+     * output: 
+     *      int, 0 on success, 1 on failure
+     */
+    int CDW::add_impurities( size_t im_spacing ) {
+        
+        // get required lattice dimensions 
+        const size_t num_sites = (const size_t)get_num_sites();
+
+        if ( im_spacing > num_sites ){
+            printf("specified impurity spacing %zu > number of sites %zu\n",
+                    im_spacing,
+                    num_sites);
+            return 1;
+        }
+
+        if ( im_spacing == 0 ){
+            printf("specified impurity spacing %zu is 0",
+                    im_spacing);
+            return 1;
+        }
+
+        double im_phase     = DEF_IM_PHASE;
+        double im_strength  = get_im_strength();
+    
+        this->impurities.clear();
+
+        LatticeSite required_site;              
+        for( size_t i = (im_spacing - 1); i < num_sites; i += i) {
+            required_site = this->lattice.at(i);
+            generate_impurity( &required_site, 
+                                im_strength, 
+                                im_phase );
+            this->impurities.push_back( &required_site );
+        }
+        return 0;
     }
 
     /*
@@ -344,27 +498,67 @@ CDW::~CDW( void ) {};
      *
      * generates all the initial conditions:
      *      - generates lattice with generate_lattice();
+     *      - adds impurities with 
      *      - sets is_setup to 1
      */
-    int CDW::setup (  ) {
+    int CDW::setup ( void ) {
         if (is_setup) {
             printf("%s\n", "The simulation has already been set up");
             return 1;
         }
-        // get required lattice dimensions 
-        const size_t num_sites = (const size_t)get_num_sites();    
         
-        // clear the vectors
-        lattice.clear();
-        impurities.clear();
+        generate_lattice();                     // generate lattice
+        add_impurities( get_im_spacing() );     // add impurities
+        is_setup = 1;                           // simulation has been setup
 
-        lattice.resize( num_sites );
-
-        // initial phase has 0 velocity
-        Phase initial_phase = { get_ini_phase(), 0.0 };
-        
-        // iterate over lattice sites and phases
-        for(size_t i = 0; i < num_sites; ++i) {
-        }
         return 1;
     }
+
+    /*
+     * uninstall
+     *
+     * clears lattice site and impurity vectors
+     * sets is_setup to 0;
+     *
+     * input:
+     *      void
+     *
+     * output:
+     *      int, 0, on success, 1 on failure
+     */
+    int CDW::uninstall ( void ) {
+        if ( !(is_setup) ) {
+            printf("%s\n", "The simulation has not been yet set up");
+            return 1;
+        }
+
+        this->lattice.clear();
+        this->impurities.clear();
+        is_setup = 0;
+
+        return 0;
+    }
+
+    /* display lattice 
+     *
+     * a simple function to display current lattice / impurities to the user
+     *
+     * input:
+     *      void
+     * 
+     * output:
+     *      void
+     */
+    void CDW::display_lattice ( void ) {
+       const std::vector<LatticeSite> my_lattice = get_lattice();
+       
+       // get required lattice dimensions 
+       const size_t num_sites = (const size_t)get_num_sites();
+
+       for( size_t i; i < num_sites; ++i) {
+            my_lattice.at(i).is_impurity? printf("X") : printf("_");
+       }
+
+       return;
+    }
+    

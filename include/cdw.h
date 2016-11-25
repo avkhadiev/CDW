@@ -54,18 +54,14 @@ typedef struct {
  *      - specifies impurity strength
  *      - specifies impurity phase (the CDW phase to pin).
  */
-struct LatticeSite;
 
-struct LatticeSite{
+typedef struct {
     int     is_impurity      ;              // 0 if doesn't, 1 if does
     double  im_strength      ;              // between 0 and 1
     double  im_phase         ;              // between 0 and 2 Pi
     Phase   phase            ;              // hosts a phase 
-    LatticeSite * const next ;              // pointer to next site
-    LatticeSite * const prev ;              // pointer to prev site
-};
+} LatticeSite;
 
-typedef struct LatticeSite LatticeSite;
 
 /*
  * OBSERVED PHASE
@@ -128,7 +124,12 @@ class CDW {
         double      get_dc_field     ( void ) { return dc_field    ; } 
         
         // vector values
-        const std::vector<LatticeSite> get_lattice () { return lattice ; }
+        const std::vector<LatticeSite> get_lattice () { 
+            return lattice; 
+        }
+        const std::vector<LatticeSite *> get_impurities() {
+            return impurities; 
+        }
         
         // print out all the settings
         void display_settings ( void );               
@@ -139,7 +140,7 @@ class CDW {
         int uninstall        ( void ) ;              // will set is_setup to 0
 
         // display lattice
-        int show_impurities  ( void ) ; 
+        void display_lattice  ( void ) ; 
         
     // time evolution 
         int run_simulation   ( void ) ;              
@@ -239,7 +240,45 @@ class CDW {
         double dc_field;
 
         /*
+         * INITIALIZE SITE
+         *
+         * given a pointer to LatticeSite, initializes it as a non-impurity
+         * site with a phase with zero velocity and value 
+         * specified by ini_phase
+         *
+         * input: 
+         *      LatticeSite *, pointer to a lattice site
+         *
+         * output: 
+         *      int, 0 on success, 1 on failure
+         */
+        int initialize_site( LatticeSite *site );
+
+        /*
+         * GENERATE IMPURITY
+         *
+         * given a pointer to an initialized LatticeSite, makes it an
+         * impurity of specified phase.
+         * the strength of the phase is determined by this->im_strength;
+         *
+         * input: 
+         *      LatticeSite *,      pointer to a lattice site
+         *      double im_strength, strength of the impurity, <= MAX_IM_STRENGTH
+         *      double im_phase,    phase of the impurity between 0 and 2 pi
+         *
+         * output: 
+         *      int, 0 on success, 1 on failure
+         */
+        int generate_impurity( LatticeSite *site,
+                                double im_strength,
+                                double im_phase );
+
+        /*
          * GENERATE LATTICE
+         *
+         *     - creates a vector of LatticeSite specified by num_sites
+         *     - adds impurities in the cites according to 
+         *          im_spacing, im_strength, and im_phase
          *
          * input:
          *      void
@@ -248,6 +287,20 @@ class CDW {
          *      void
          */
         void generate_lattice ( void );
+
+        /*
+         * ADD IMPURITIES 
+         *
+         * given an impurity spacing and  generates impurities 
+         * in the lattice and fills a vector of pointers to them for reference.
+         *
+         * input:
+         *      size_t im_spacing, impurity spacing in units of lattice sites.
+         *
+         * output: 
+         *      int, 0 on success, 1 on failure
+         */
+        int add_impurities( size_t im_spacing );
         
 
     // DYNAMICS PARAMETERS
