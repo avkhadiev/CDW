@@ -197,14 +197,14 @@ class CDW {
         /* 
          * TEMPERATURE 
          */
-        static double temperature;                  // temperature, K
+        double temperature;                  // temperature, K
 
         /*
          * THERMAL NOISE
          *
          * TODO implementation of thermal noise
          */
-        inline const double noise( void ) ;         // thermal noise
+        inline double noise( void ) ;               // thermal noise
 
         /*
          * ELASTICITY MODELS
@@ -227,10 +227,10 @@ class CDW {
          *          a pointer to the phase for which the force is computed
          *
          *  output:
-         *      const double, a force of elastic interaction of the phase 
+         *          double, a force of elastic interaction of the phase 
          *          with other phases according to the underlying model
          */
-        inline const double j( const Phase *phase ) ;
+        inline double j( const Phase *phase ) ;
 
         /*
          * ELECTRIC FIELDS
@@ -322,9 +322,9 @@ class CDW {
          *      const *Phase phase, a phase for which the change is 
          *      to be calculated
          *  output:
-         *      const double, the calculated change in the phase
+         *      double, the calculated change in the phase
          */
-        inline const double rate_of_change( const Phase *phase ) ;
+        inline double rate_of_change( const Phase *phase ) ;
 
         /*
          * UPDATE_PHASE

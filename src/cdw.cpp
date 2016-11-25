@@ -6,7 +6,7 @@
 #include <vector>
 #include <cmath>
 
-#include "include/cdw.h"
+#include "../include/cdw.h"
 
 #define UNUSED(x) (void)(x)
 const double PI = 3.141592653589793;
@@ -28,6 +28,10 @@ CDW::CDW( void ) {
     j_model     = "nearest neighbor" ;          // elasticity model
     j_strength  = DEF_J_STRENGTH     ;          // elasticity coefficient
     dc_field    = DEF_DC_FIELD       ;          // dc electric field
+    // vector variables
+    lattice         = std::vector<LatticeSite  >( num_sites ) ;
+    impurities      = std::vector<LatticeSite *>(     0     ) ;
+    observed_phases = std::vector<ObservedPhase>(     0     ) ;
 };
 
 // destructor
@@ -391,7 +395,7 @@ CDW::~CDW( void ) {};
      * output: 
      *      int, 0 on success, 1 on failure
      */
-    int generate_impurity( LatticeSite *site, 
+    int CDW::generate_impurity( LatticeSite *site, 
                             double im_strength, 
                             double im_phase  ) {
     
@@ -555,9 +559,12 @@ CDW::~CDW( void ) {};
        // get required lattice dimensions 
        const size_t num_sites = (const size_t)get_num_sites();
 
-       for( size_t i; i < num_sites; ++i) {
-            my_lattice.at(i).is_impurity? printf("X") : printf("_");
+       printf("\n");
+       printf("representation of the lattice:\n");
+       for( size_t i = 0; i < num_sites; ++i) {
+            my_lattice.at(i).is_impurity? printf("X ") : printf("_ ");
        }
+       printf("\n");
 
        return;
     }
