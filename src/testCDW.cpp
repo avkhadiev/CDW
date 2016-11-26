@@ -17,6 +17,26 @@ int test_lattice ( void ) {
 }
 
 
+int run_simulation ( void ) { 
+    std::cout<<"**************************************************"<<std::endl;
+    std::cout<<"WILL TEST:                                        "<<std::endl;
+    std::cout<<"    - RUN DEFAULT SIMULATION                      "<<std::endl;
+    std::cout<<"**************************************************"<<std::endl;
+    
+    CDW simulation;                                       // declare simulation
+    
+    simulation.set_dc_field( 1.0 );                      
+    simulation.display_settings();                        // display settings
+    
+    simulation.setup();                                   // setup
+    simulation.observe_sites();                           // observe some sites
+
+    simulation.run_simulation();                          // run simulation
+    
+    printf("done testing simulation run!\n");
+    return 0;
+}
+
 int main(int argc, const char** argv) {
     std::cout<<"**************************************************"<<std::endl;
     std::cout<<"                    CDW TESTER                    "<<std::endl;
@@ -37,6 +57,9 @@ int main(int argc, const char** argv) {
             // PARSE THROUGH ARGUMENTS AND MATCH THEM TO TEST SUITES
             if ( current_arg == "lattice" ) {
                 test_lattice();
+            }
+            if ( current_arg == "run"     ) {
+                run_simulation();
             }
             else {
                 fprintf(stderr, 

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cassert>
 #include <sstream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <cmath>
@@ -10,7 +11,11 @@
 
 #define UNUSED(x) (void)(x)
 const double PI = 3.141592653589793;
-const double TwoPI = 2 * PI; 
+
+// declare known elasticity models
+std::string inf_range          = "infinite range"           ;
+std::string near_neighbor      = "nearest neighbor"         ;
+std::string next_near_neighbor = "next to nearest neighbor" ;
 
 // constructor
 CDW::CDW( void ) {
@@ -29,9 +34,9 @@ CDW::CDW( void ) {
     j_strength  = DEF_J_STRENGTH     ;          // elasticity coefficient
     dc_field    = DEF_DC_FIELD       ;          // dc electric field
     // vector variables
-    lattice         = std::vector<LatticeSite  >( num_sites ) ;
-    impurities      = std::vector<LatticeSite *>(     0     ) ;
-    observed_phases = std::vector<ObservedPhase>(     0     ) ;
+    lattice         = std::vector<LatticeSite>( num_sites ) ;
+    impurities      = std::vector<const LatticeSite *>( 0 )        ;
+    observed_sites  = std::vector<const LatticeSite *>( 0 ) ;
 };
 
 // destructor
@@ -230,11 +235,6 @@ CDW::~CDW( void ) {};
             return 1;
         }
 
-        // declare known elasticity models
-        std::string inf_range          = "infinite range"           ;
-        std::string near_neighbor      = "nearest neighbor"         ;
-        std::string next_near_neighbor = "next to nearest neighbor" ;
-
         // match the input string to known models:
         if ( j_model == inf_range ) {
         }
@@ -390,7 +390,7 @@ CDW::~CDW( void ) {};
      * input: 
      *      LatticeSite *, pointer to a lattice cite
      *      double im_strength, strength of the impurity, <= MAX_IM_STRENGTH
-     *      double im_phase,    phase of the impurity between 0 and 2 pi
+     *      double im_phase,    phase of the impurity, in units of pi
      *
      * output: 
      *      int, 0 on success, 1 on failure
@@ -404,10 +404,10 @@ CDW::~CDW( void ) {};
             return 1;
         }
     
-        if ( (im_phase < 0) || (im_phase > TwoPI) ) {
+        if ( (im_phase < 0) || (im_phase > 2) ) {
             printf("phase value %f %s\n", 
                         im_phase, 
-                        "is not between 0 and 2 pi");
+                        "is not between 0 and 2 (specified in units of Pi)");
             return 1;
         }
         
@@ -420,7 +420,6 @@ CDW::~CDW( void ) {};
         }
 
         // generate an impurity:
-        // FIXME
         site->is_impurity = 1           ;               // is an impurity
         site->im_strength = im_strength ;               // specifed strength
         site->im_phase    = im_phase    ;               // specified phase 
@@ -492,7 +491,7 @@ CDW::~CDW( void ) {};
             generate_impurity( required_site, 
                                 im_strength, 
                                 im_phase );
-            this->impurities.push_back( required_site );
+            this->impurities.push_back( (const LatticeSite *)required_site );
         }
         return 0;
     }
@@ -538,6 +537,8 @@ CDW::~CDW( void ) {};
 
         this->lattice.clear();
         this->impurities.clear();
+        this->observed_sites.clear();
+
         is_setup = 0;
 
         return 0;
@@ -568,4 +569,339 @@ CDW::~CDW( void ) {};
 
        return;
     }
+
+// Observables
+/*
+ * functions to observe specific sites on the lattice
+ */
+
+    /*
+     * ADD OBSERVED SITE
+     *
+     * given a pointer to a LatticeSite, add the pointer to that site in 
+     * the array of sites to be observed
+     *
+     * input:
+     *      LatticeSite *site, a pointer to a (const) LatticeSite
+     *
+     * output:
+     *      int, 0 on success, 1 on failure
+     */
+    inline int CDW::add_observed_site ( const LatticeSite *site ) {
+        
+        if ( site == 0  ) {
+            printf("%s\n", "invalid pointer to LatticeSite");
+            return 1;
+        }
+
+        this->observed_sites.push_back( site );
+
+        return 0;
+    }
+
+
+    /* observe all sites with impurities, 
+     * FIXME: currently not customizable. 
+     *       need a nice way to specify which sites to observe
+     *
+     * input: 
+     *      void
+     *
+     * output:
+     *      int, 0 on success, 1 on failure
+     */
+    int CDW::observe_sites( void ){
+        if ( !(is_setup) ) {
+            printf("%s\n", "The simulation has not been yet set up");
+            return 1;
+        }
+        
+        const std::vector<const LatticeSite *> my_impurities = get_impurities();
+        size_t num_impurities = my_impurities.size();
+
+        // add all impurities in the list of obsered sites
+        for(size_t i = 0; i < num_impurities; ++i ){
+            add_observed_site( my_impurities.at(i) );
+        }
+
+        // add a control impurity site
+        add_observed_site( (const LatticeSite *)( &(lattice.at(0)) ) );
+        
+        return 0;
+    }
     
+    /*
+     * GET OBSERVED PHASE
+     *
+     * given a Phase that records a state of a phase, and a time 
+     * corresponding to that state, outputs a struct representing 
+     * the behavior of the phase at an observed state at a given time.
+     * 
+     * this struct may later be used for visualizations
+     *
+     * input:
+     *      const *Phase phase, a phase at a given site
+     *      double time, the corresponding time
+     *
+     * output:
+     *      ObservedPhase, the struct representing phase behavior 
+     *          at the corresponding time
+     *      
+     */
+    inline ObservedPhase CDW::get_observed_phase( const LatticeSite *site, 
+                                                    double time ){
+        ObservedPhase observed;
+        double cdw_phase = site->phase.phase ;
+        double pin_phase = site->im_phase    ;
+        
+        // [ abs( phi - beta ) mod 2 pi ] - pi/2 in units of pi
+        double normalized_phase = fmod( fabs( cdw_phase - pin_phase ), 2.0 ) 
+                                    - 0.5;
+
+        observed.phase          = normalized_phase;  
+        observed.rate_of_change = site->phase.rate_of_change;
+        observed.time           = time;
+
+        return observed;
+    }
+
+// dynamics
+/*
+ * functions for updating the state of the system
+ */
+
+    /*
+     *  UPDATE_RATE
+     *
+     *  input:
+     *      size_t i, the index of the site that hosts the phase which 
+     *          rate of change is to be computed
+     *
+     *  output:
+     *      void, updates the rate of change of the phase in place
+     */
+     void CDW::update_rate( size_t i ) {
+       if (j_model == near_neighbor){
+
+            LatticeSite *site = &( lattice.at(i) );
+            
+            double cdw_phase    = site->phase.phase;
+            double pin_phase    = site->im_phase;
+            double pin_strength = site->im_strength;
+            
+            double pinning_force = (-1) * pin_strength * sin( (cdw_phase - pin_phase) * PI ) ;
+            
+            double elastic_force = 0;
+            // respect periodic boundary conditions
+            size_t right_index = (i + 1) % num_sites;
+            size_t left_index  = (i + num_sites - 1) % num_sites;
+            double right_phase = lattice.at( right_index ).phase.phase;     
+            double left_phase  = lattice.at( left_index  ).phase.phase;
+            // whether a phase is to the right or to the left does not matter.
+            // i.e., when a neighbor phase is greater, it's always pushing 
+            // in the positive direction, regardless of whether it's a right 
+            // neighbor or a left neighbor.
+            elastic_force += j_strength * ( right_phase - cdw_phase );
+            elastic_force += j_strength * ( left_phase  - cdw_phase );
+
+            double rate = elastic_force + pinning_force + dc_field;
+            site->phase.rate_of_change = rate;
+
+            return;
+       }
+       else if (j_model == next_near_neighbor){
+           fprintf(stderr, "j_model %s not yet implemented", 
+                   next_near_neighbor.c_str() );
+           exit( EXIT_FAILURE );
+       }
+       else {
+          fprintf(stderr, "j_model '%s' not recognized by rate_of_change", 
+                    j_model.c_str());
+          exit( EXIT_FAILURE );
+       }
+    }
+
+
+    /*
+     * UPDATE_SITE
+     *
+     * requires a specified way to calculate the rate of change.
+     * once the rate of change has been computed and saved at the site,
+     * and the current value of the phase is no longer needed, updates the 
+     * value of the phase at the site
+     *
+     *  input:
+     *      size_t i, the index of the site that hosts the phase which 
+     *          rate of change is to be computed
+     *  output:
+     *      void, updates the phase in place
+     */
+    inline void CDW::update_site( size_t i ) {
+        
+        LatticeSite *site = &( lattice.at(i) );
+        site->phase.phase += site->phase.rate_of_change * time_step;
+
+        return;
+    }
+
+
+    /*
+     * STEP
+     *
+     * performs a step in the MD simulation, updating all relevant 
+     * variables in place.
+     *
+     * input:
+     *      void
+     *
+     * output:
+     *      void
+     */
+    void CDW::step( void ) {
+        
+        // update all rates of change, don't update phases (need old values 
+        // to compute all the rates)
+        for (size_t i = 0; i < num_sites; ++i) {
+            update_rate(i); 
+        }
+
+        // update all the phases
+        for (size_t i = 0; i < num_sites; ++i) {
+            update_site(i);
+        }
+
+        // update time
+        time += time_step;
+
+        return;
+    }
+
+    
+    /*
+     * EVOLVE
+     *
+     * performs the evolution of the system for the specified amount of 
+     * steps
+     *
+     * input:
+     *      size_t steps
+     *
+     * output:
+     *      void
+     */
+    void CDW::evolve( size_t steps ){
+        for(size_t i = 0; i < steps; ++i){
+            step();
+        }
+        return;
+    }
+
+
+    /*
+     * WRITE_OBSERVED_SITES
+     *
+     * using an array of pointers to the sites being observed, 
+     * records a corresponding ObservedPhase data struct for each site into 
+     * a separate file.
+     *
+     * To be called at each evolution step in the MD simulation.
+     * The result is an text file per each observed site, that contains the 
+     * observed phase, the corresponding rate of change, and corresponding 
+     * times.
+     *
+     * the files can be later plotted with Python
+     *
+     * input:  
+     *      void
+     *
+     * output:
+     *      int, 0 on success, 1 on failure
+     */
+    int CDW::write_observed_sites( void ){
+
+        size_t observations = observed_sites.size();
+        ObservedPhase observed;
+
+        // prepare for writeout
+        std::ofstream writeout;
+        std::string   base_name_phase    = "output/phase";
+        std::string   base_name_momentum = "output/momentum";
+        std::string   extension          = ".txt";
+        std::string   name_phase;
+        std::string   name_momentum;
+
+        // loop over observed sites vector
+        for( size_t i = 0; i < observations; ++i ){
+            
+            // get observed phase
+            observed = get_observed_phase( observed_sites.at(i), time );
+            
+            // print out (phase, time)
+            name_phase = base_name_phase 
+                            + std::to_string( i ) 
+                            + extension;
+            writeout.open( name_phase, std::ios::out | std::ios::app );
+
+            if( writeout.is_open() ) {
+                writeout << std::to_string( observed.phase );
+                writeout << "     ";
+                writeout << std::to_string( observed.time  );
+                writeout << "\n";
+                writeout.close();
+            }
+            else{
+                fprintf(stderr, 
+                            "Unable to open file %s\n", 
+                            name_momentum.c_str());
+                perror( "open:" );
+                return 1;
+            }
+
+            // print out (momentum, time)
+
+            name_momentum = base_name_momentum 
+                                + std::to_string( i ) 
+                                + extension;
+            writeout.open( name_momentum, std::ios::out | std::ios::app );
+
+            if( writeout.is_open() ) {
+                writeout << std::to_string( observed.rate_of_change );
+                writeout << "     ";
+                writeout << std::to_string( observed.time  );
+                writeout << "\n";
+                writeout.close();
+            }
+            else{
+                fprintf(stderr, 
+                            "Unable to open file %s\n", 
+                            name_momentum.c_str());
+                perror( "open:" );
+                return 1;
+            }
+        }
+
+        return 0;
+    }
+
+
+    /*
+     * RUN SIMULATION
+     */
+    void CDW::run_simulation ( void ) {
+        if ( !(is_setup) ) {
+            printf("%s\n", "The simulation has not yet been set up");
+            return;
+        }
+
+        // calculate final time:
+        double final_time = ini_time + num_steps * time_step;
+
+        while ( time < final_time ) {
+            evolve( 1 );                // it is possible to not write out
+                                        // at every step by changing this
+                                        // argument
+            write_observed_sites();
+        }
+       
+        return;
+    }

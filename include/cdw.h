@@ -41,8 +41,8 @@
  *      - specifies current rate of change of the phase
  */
 typedef struct {
-    double  phase          ;     // not restricted to 2 Pi
-    double  rate_of_change ;     // initially 0
+    double  phase          ;     // in units of Pi
+    double  rate_of_change ;     // in units of Pi, initially 0
 } Phase;
 
 /*
@@ -70,9 +70,10 @@ typedef struct {
  */
 typedef struct {
     // sin ( [ abs( phi - beta ) mod 2 pi ] - pi/2 ) 
-    double observed_phase ; 
+    double phase ;
+    double rate_of_change ;
     // time at which the the observed phase is recorded
-    double observed_time  ;
+    double time ;
 } ObservedPhase;
 
 /*
@@ -127,8 +128,11 @@ class CDW {
         const std::vector<LatticeSite> get_lattice () { 
             return lattice; 
         }
-        const std::vector<LatticeSite *> get_impurities() {
+        const std::vector<const LatticeSite *> get_impurities() {
             return impurities; 
+        }
+        const std::vector<const LatticeSite *> get_observed_sites() {
+            return observed_sites; 
         }
         
         // print out all the settings
@@ -143,13 +147,14 @@ class CDW {
         void display_lattice  ( void ) ; 
         
     // time evolution 
-        int run_simulation   ( void ) ;              
+        void run_simulation   ( void ) ;              
 
     // measurement of observables
     
-        // observe a certain number of phases on cites with impurities,
-        // and a certain number of phases on sites free of impurities
-        int observe_phases    ( size_t impurities, size_t free );
+        // observe all sites with impurities, 
+        // FIXME: currently not customizable. 
+        //        need a nice way to specify which sites to observe
+        int observe_sites( void );
     
     // calculation of statistics
     private:
@@ -180,7 +185,7 @@ class CDW {
          *      impurities  -- contains pointers to the sites with impurities
          */
         std::vector<LatticeSite> lattice;
-        std::vector<LatticeSite *> impurities;
+        std::vector<const LatticeSite *> impurities;
         
         /*
          * DISTANCE BETWEEN IMPURITIES
@@ -315,32 +320,30 @@ class CDW {
         /*
          *  RATE_OF_CHANGE
          *
-         *  given a Phase, outputs the rate of change of the phase according 
-         *  to the underlying force field
-         *
          *  input:
-         *      const *Phase phase, a phase for which the change is 
-         *      to be calculated
+         *      size_t i, the index of the site that hosts the phase which 
+         *          rate of change is to be computed
+         *
          *  output:
-         *      double, the calculated change in the phase
+         *      void, updates the rate of change of the phase in place
          */
-        inline double rate_of_change( const Phase *phase ) ;
+        void update_rate( size_t i ) ;
 
         /*
-         * UPDATE_PHASE
-         *
-         * given a Phase *, updates its value and rate of change 
-         * for the next time step.
+         * UPDATE_SITE
          *
          * requires a specified way to calculate the rate of change.
+         * once the rate of change has been computed and saved at the site,
+         * and the current value of the phase is no longer needed, updates the 
+         * value of the phase at the site
          *
-         * input:
-         *      Phase *phase, a pointer to the phase for which values are to 
-         *          be changed in place
-         * output:
-         *      int, 0 if change is successful, 1 otherwise
+         *  input:
+         *      size_t i, the index of the site that hosts the phase which 
+         *          rate of change is to be computed
+         *  output:
+         *      void, updates the phase in place
          */
-        int update_phase( Phase * phase ) ;
+        inline void update_site( size_t i ) ;
 
         /*
          * STEP
@@ -352,9 +355,9 @@ class CDW {
          *      void
          *
          * output:
-         *      int, 0 on sucess, 1 on failure
+         *      void
          */
-        int step( void ) ;
+        void step( void ) ;
 
         /*
          * EVOLVE
@@ -366,9 +369,9 @@ class CDW {
          *      size_t steps
          *
          * output:
-         *      int, 0 on success, 1 on failure
+         *      void
          */
-        int evolve( size_t steps );
+        void evolve( size_t steps );
  
     // observables
     /* TODO: need a convenient way to characterize a transition
@@ -400,7 +403,7 @@ class CDW {
          *          at the corresponding time
          *      
          */
-        inline ObservedPhase get_observed_phase( const Phase *phase, 
+        inline ObservedPhase get_observed_phase( const LatticeSite *site, 
                                                     double time );
 
         /*
@@ -409,21 +412,21 @@ class CDW {
          * contain pointers to lattice cites for which the behavior of phases
          * is recorded
          */
-        std::vector<ObservedPhase> observed_phases;
+        std::vector<const LatticeSite *> observed_sites;
 
         /*
-         * ADD OBSERVED PHASE
+         * ADD OBSERVED SITE
          *
-         * given a pointer to a Phase, add that phase in the array of 
-         * phases to be observed
+         * given a pointer to a LatticeSite, add the pointer to that site in 
+         * the array of sites to be observed
          *
          * input:
-         *      Phase *phase, a pointer to (const) Phase
+         *      LatticeSite *site, a pointer to a (const) LatticeSite
          *
          * output:
          *      int, 0 on success, 1 on failure
          */
-        int add_observed_phase ( const Phase *phase );
+        inline int add_observed_site ( const LatticeSite *site );
 
     // statistics
     /*
@@ -432,4 +435,28 @@ class CDW {
      *          - mean velocity of the phase during transition per impurity
      *          - mean number of transitions per unit time per impurity
      */
+
+    // results output
+
+    /*
+     * WRITE_OBSERVED_SITES
+     *
+     * using an array of pointers to the sites being observed, 
+     * records a corresponding ObservedPhase data struct for each site into 
+     * a separate file.
+     *
+     * To be called at each evolution state in the MD simulation.
+     * The result is an text file per each observed site, that contains the 
+     * observed phase, the corresponding rate of change, and corresponding 
+     * times.
+     *
+     * the files can be later plotted with Python
+     *
+     * input:  
+     *      void
+     *
+     * output:
+     *      int, 0 on success, 1 on failure
+     */
+    int write_observed_sites( void );
 };
