@@ -25,7 +25,7 @@ int run_simulation ( void ) {
     
     CDW simulation;                                       // declare simulation
     
-    simulation.set_dc_field( 1.0 );                      
+    simulation.set_dc_field( 0.5 );                      
     simulation.display_settings();                        // display settings
     
     simulation.setup();                                   // setup

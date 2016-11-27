@@ -20,7 +20,7 @@
 #define MAX_IM_STRENGTH 3                           // max impurity strength
 #define DEF_INI_TIME    0                           // simulation start time
 #define DEF_TIME_STEP   0.001                       // default time step
-#define DEF_NUM_STEPS   1000                        // number of time steps
+#define DEF_NUM_STEPS   10000                       // number of time steps
 // model-dependent constants
 #define DEF_SITES       12                          // default num of sites
 #define DEF_IM_STRENGTH 1                           // default strength

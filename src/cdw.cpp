@@ -655,8 +655,9 @@ CDW::~CDW( void ) {};
         double pin_phase = site->im_phase    ;
         
         // [ abs( phi - beta ) mod 2 pi ] - pi/2 in units of pi
-        double normalized_phase = fmod( fabs( cdw_phase - pin_phase ), 2.0 ) 
-                                    - 0.5;
+        double normalized_phase = sin( (fmod( fabs( cdw_phase - pin_phase ), 
+                                                    2.0 ) 
+                                        - 0.5) * PI );
 
         observed.phase          = normalized_phase;  
         observed.rate_of_change = site->phase.rate_of_change;
