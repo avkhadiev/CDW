@@ -21,10 +21,13 @@ for filename in text_files:
             variable.append( cols[0] );
             time.append( cols[1] );
         print("making a plot %s" % ( plotname ))
-        fig = plt.figure()
+        fig = plt.figure(figsize=(20,2))
         plt.plot( time, variable )
-        fig.suptitle( plotname , fontsize=20)
+        fig.suptitle( plotname , fontsize=10)
+        plt.xlabel("Time")
+        plt.ylabel("%s" % (filename.split('_')[0]))
         fig.savefig( "%s/%s/%s.%s" % ( dirname, "plots", plotname, ".png"))
+        plt.close()
 
 
 #   make a plot with elements from second column on the x-axis

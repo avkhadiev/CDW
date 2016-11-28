@@ -6,16 +6,30 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <random>
 
 #include "../include/cdw.h"
 
 #define UNUSED(x) (void)(x)
 const double PI = 3.141592653589793;
 
+// random number generation
+// construct a trivial random generator engine from a time-based seed:
+unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+std::ranlux24 generator( seed );
+std::uniform_real_distribution<double> noise_distribution(0,1);
+std::uniform_real_distribution<double> phase_distribution(0,2);
+
 // declare known elasticity models
 std::string inf_range          = "infinite range"           ;
 std::string near_neighbor      = "nearest neighbor"         ;
 std::string next_near_neighbor = "next to nearest neighbor" ;
+
+// declare known noise models
+std::string none               = "none"                     ; 
+std::string small              = "small"                    ; 
+std::string medium             = "medium"                   ;
+std::string large              = "large"                    ;
 
 // constructor
 CDW::CDW( void ) {
@@ -237,10 +251,13 @@ CDW::~CDW( void ) {};
 
         // match the input string to known models:
         if ( j_model == inf_range ) {
+            this->j_model = j_model;
         }
         else if ( j_model == near_neighbor ) {
+            this->j_model = j_model;
         }
         else if ( j_model == next_near_neighbor ) {
+            this->j_model = j_model;
         }
         else {
             printf("%s '%s' %s: %s, %s, or %s\n",
@@ -285,24 +302,35 @@ CDW::~CDW( void ) {};
      *      int 0, on success, 1 on failure
      */
     int CDW::set_noise_model ( std::string noise_model ) {
-        // FIXME STUB
-        UNUSED( noise_model );
-        return 1;
-    };
+        if (is_setup) {
+            printf("%s\n", "The simulation has already been set up");
+            return 1;
+        }
 
-    /*
-     * set_noise
-     * 
-     * input:
-     *      doube noise, noise intensity to be initialized
-     * 
-     * output:
-     *      int 0, on success, 1 on failure
-     */
-    int CDW::set_noise ( double noise ) {
-        // FIXME STUB
-        UNUSED( noise );
-        return 1;
+        // match the input string to known models:
+        if ( noise_model == none  ) {
+            this->noise_model = none;
+        }
+        if ( noise_model == small ) {
+            this->noise_model = noise_model;
+        }
+        else if ( noise_model == medium ) {
+            this->noise_model = noise_model;
+        }
+        else if ( noise_model == large ) {
+            this->noise_model = noise_model;
+        }
+        else {
+            printf("%s '%s' %s: %s, %s, or %s\n",
+                    "the input string",
+                    noise_model.c_str(),
+                    "was not recognized as one of the following options",
+                    small.c_str(),
+                    medium.c_str(),
+                    large.c_str());
+            return 1;
+        }
+        return 0;
     };
 
     /*
@@ -343,8 +371,7 @@ CDW::~CDW( void ) {};
         printf("%s: %.3f\n", "temperature        " , get_temperature()     ) ;    
         printf("%s: %s\n"  , "elasticity model   " , get_j_model().c_str() ) ;    
         printf("%s: %.3f\n", "elasticity strength" , get_j_strength()      ) ;    
-        printf("%s: %s\n"  , "noise model        " , "STUB"                ) ;   //TODO
-        printf("%s: %s\n"  , "noise intensity    " , "STUB"                ) ;   //TODO
+        printf("%s: %s\n"  , "noise model        " , get_noise_model().c_str() ) ;  
         printf("%s: %.3f\n", "DC electric field  " , get_dc_field()        ) ;    
         return;
     }
@@ -373,10 +400,10 @@ CDW::~CDW( void ) {};
         // initial phase has 0 velocity
         Phase ini_phase = { get_ini_phase(), 0.0 };
 
-        site->is_impurity = 0         ;             // not an impurity 
-        site->im_strength = 0         ;             // impurity strength
-        site->im_phase    = 0         ;             // impurity phase
-        site->phase       = ini_phase ;             // initial phase at site
+        site->is_impurity = 0         ;                 // not an impurity 
+        site->im_strength = 0         ;                 // impurity strength
+        site->im_phase    = 0         ;                 // impurity phase
+        site->phase       = ini_phase ;                 // initial phase at site
 
         return 0;
     }
@@ -423,7 +450,7 @@ CDW::~CDW( void ) {};
         site->is_impurity = 1           ;               // is an impurity
         site->im_strength = im_strength ;               // specifed strength
         site->im_phase    = im_phase    ;               // specified phase 
-    
+
         return 0;
     }
     
@@ -480,7 +507,7 @@ CDW::~CDW( void ) {};
             return 1;
         }
 
-        double im_phase     = DEF_IM_PHASE;
+        //double im_phase     = DEF_IM_PHASE;     // CHANGED TO UNIFORM RANDOM
         double im_strength  = get_im_strength();
     
         this->impurities.clear();
@@ -490,7 +517,7 @@ CDW::~CDW( void ) {};
             required_site = &( this->lattice.at(i) );
             generate_impurity( required_site, 
                                 im_strength, 
-                                im_phase );
+                                phase_distribution( generator ) );
             this->impurities.push_back( (const LatticeSite *)required_site );
         }
         return 0;
@@ -563,7 +590,9 @@ CDW::~CDW( void ) {};
        printf("\n");
        printf("representation of the lattice:\n");
        for( size_t i = 0; i < num_sites; ++i) {
-            my_lattice.at(i).is_impurity? printf("X ") : printf("_ ");
+            my_lattice.at(i).is_impurity? printf(" X %.2f ", 
+                                            my_lattice.at(i).im_phase) 
+                                        : printf(" _ ");
        }
        printf("\n");
 
@@ -601,8 +630,6 @@ CDW::~CDW( void ) {};
 
 
     /* observe all sites with impurities, 
-     * FIXME: currently not customizable. 
-     *       need a nice way to specify which sites to observe
      *
      * input: 
      *      void
@@ -616,16 +643,11 @@ CDW::~CDW( void ) {};
             return 1;
         }
         
-        const std::vector<const LatticeSite *> my_impurities = get_impurities();
-        size_t num_impurities = my_impurities.size();
-
-        // add all impurities in the list of obsered sites
-        for(size_t i = 0; i < num_impurities; ++i ){
-            add_observed_site( my_impurities.at(i) );
+        // add all sites in the list of obsered sites
+        for(size_t i = 0; i < num_sites; ++i ){
+            add_observed_site( &( lattice.at(i)) );
         }
 
-        // add a control impurity site
-        add_observed_site( (const LatticeSite *)( &(lattice.at(0)) ) );
         
         return 0;
     }
@@ -672,6 +694,44 @@ CDW::~CDW( void ) {};
  */
 
     /*
+     *  NOISE
+     *
+     *  input:
+     *      void:
+     *
+     *   output: 
+     *      void:
+     */
+     inline double CDW::noise( void ) {
+        
+        double random = noise_distribution( generator );
+        double noise_force;
+
+        if (random >= 0.5) {
+            noise_force = 1;
+        }
+        if (random < 0.5) {
+            noise_force = -1;
+        }
+
+        if( get_noise_model() == none ) {
+            return 0;
+        }
+        else if( get_noise_model() == small ){
+            return 0.2 * noise_force; 
+        }
+        else if( get_noise_model() == medium ){
+            return 0.5 * noise_force; 
+        }
+        else if( get_noise_model() == large ){
+            return 1.0 * noise_force;
+        }
+        else{
+            return 0;
+        }
+     }
+
+    /*
      *  UPDATE_RATE
      *
      *  input:
@@ -679,9 +739,9 @@ CDW::~CDW( void ) {};
      *          rate of change is to be computed
      *
      *  output:
-     *      void, updates the rate of change of the phase in place
+     *      double rate, the corresponding rate
      */
-     void CDW::update_rate( size_t i ) {
+     double CDW::compute_rate( size_t i ) {
        if (j_model == near_neighbor){
 
             LatticeSite *site = &( lattice.at(i) );
@@ -705,10 +765,10 @@ CDW::~CDW( void ) {};
             elastic_force += j_strength * ( right_phase - cdw_phase );
             elastic_force += j_strength * ( left_phase  - cdw_phase );
 
-            double rate = elastic_force + pinning_force + dc_field;
+            double rate = elastic_force + pinning_force + noise() + dc_field;
             site->phase.rate_of_change = rate;
 
-            return;
+            return rate;
        }
        else if (j_model == next_near_neighbor){
            fprintf(stderr, "j_model %s not yet implemented", 
@@ -759,16 +819,18 @@ CDW::~CDW( void ) {};
      *      void
      */
     void CDW::step( void ) {
-        
-        // update all rates of change, don't update phases (need old values 
-        // to compute all the rates)
+        std::vector<LatticeSite> new_lattice = get_lattice();
+
+        // compute all rates of change, don't update sites yet (need old values 
+        // to compute all the rates, and the new phases)
         for (size_t i = 0; i < num_sites; ++i) {
-            update_rate(i); 
+            new_lattice.at(i).phase.rate_of_change = compute_rate(i); 
         }
 
-        // update all the phases
+        // update all the phases, and rates
         for (size_t i = 0; i < num_sites; ++i) {
             update_site(i);
+            lattice.at(i).phase.rate_of_change = new_lattice.at(i).phase.rate_of_change;
         }
 
         // update time
@@ -828,6 +890,7 @@ CDW::~CDW( void ) {};
         std::string   base_name_phase    = "output/phase";
         std::string   base_name_momentum = "output/momentum";
         std::string   extension          = ".txt";
+        std::string   impurity_string;
         std::string   name_phase;
         std::string   name_momentum;
 
@@ -836,9 +899,20 @@ CDW::~CDW( void ) {};
             
             // get observed phase
             observed = get_observed_phase( observed_sites.at(i), time );
-            
+
+            int is_impurity = observed_sites.at(i)->is_impurity;
+            if (is_impurity) {
+                impurity_string = "impure";
+            }
+            else {
+                impurity_string = "free";
+            }
+
             // print out (phase, time)
-            name_phase = base_name_phase 
+            name_phase = base_name_phase
+                            + "_"
+                            + impurity_string
+                            + "_"
                             + std::to_string( i ) 
                             + extension;
             writeout.open( name_phase, std::ios::out | std::ios::app );
@@ -861,6 +935,9 @@ CDW::~CDW( void ) {};
             // print out (momentum, time)
 
             name_momentum = base_name_momentum 
+                                + "_"
+                                + impurity_string
+                                + "_"
                                 + std::to_string( i ) 
                                 + extension;
             writeout.open( name_momentum, std::ios::out | std::ios::app );
@@ -897,6 +974,7 @@ CDW::~CDW( void ) {};
         // calculate final time:
         double final_time = ini_time + num_steps * time_step;
 
+        write_observed_sites();         // write out the initial values
         while ( time < final_time ) {
             evolve( 1 );                // it is possible to not write out
                                         // at every step by changing this

@@ -20,7 +20,7 @@
 #define MAX_IM_STRENGTH 3                           // max impurity strength
 #define DEF_INI_TIME    0                           // simulation start time
 #define DEF_TIME_STEP   0.001                       // default time step
-#define DEF_NUM_STEPS   10000                       // number of time steps
+#define DEF_NUM_STEPS   50000                       // number of time steps
 // model-dependent constants
 #define DEF_SITES       12                          // default num of sites
 #define DEF_IM_STRENGTH 1                           // default strength
@@ -120,8 +120,7 @@ class CDW {
         double      get_temperature  ( void ) { return temperature ; }               
         std::string get_j_model      ( void ) { return j_model     ; }               
         double      get_j_strength   ( void ) { return j_strength  ; }               
-        std::string get_noise_model  ( void ) { return "STUB"      ; } // TODO              
-        std::string get_noise        ( void ) { return "STUB"      ; } // TODO      
+        std::string get_noise_model  ( void ) { return noise_model ; } // TODO              
         double      get_dc_field     ( void ) { return dc_field    ; } 
         
         // vector values
@@ -210,6 +209,7 @@ class CDW {
          * TODO implementation of thermal noise
          */
         inline double noise( void ) ;               // thermal noise
+        std::string noise_model     ;
 
         /*
          * ELASTICITY MODELS
@@ -318,16 +318,16 @@ class CDW {
         size_t num_steps ;                            // number of steps
 
         /*
-         *  RATE_OF_CHANGE
-         *
+         *  COMPUTE RATE
+         *  
          *  input:
          *      size_t i, the index of the site that hosts the phase which 
          *          rate of change is to be computed
          *
          *  output:
-         *      void, updates the rate of change of the phase in place
+         *      double, the value of the rate
          */
-        void update_rate( size_t i ) ;
+        double compute_rate( size_t i ) ;
 
         /*
          * UPDATE_SITE

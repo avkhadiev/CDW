@@ -25,7 +25,8 @@ int run_simulation ( void ) {
     
     CDW simulation;                                       // declare simulation
     
-    simulation.set_dc_field( 0.5 );                      
+    simulation.set_dc_field( 0.0 );                      
+    simulation.set_noise_model( "none" );                 // noise
     simulation.display_settings();                        // display settings
     
     simulation.setup();                                   // setup
@@ -58,7 +59,7 @@ int main(int argc, const char** argv) {
             if ( current_arg == "lattice" ) {
                 test_lattice();
             }
-            if ( current_arg == "run"     ) {
+            else if ( current_arg == "run"     ) {
                 run_simulation();
             }
             else {
