@@ -309,9 +309,9 @@ CDW::~CDW( void ) {};
 
         // match the input string to known models:
         if ( noise_model == none  ) {
-            this->noise_model = none;
+            this->noise_model = noise_model;
         }
-        if ( noise_model == small ) {
+        else if ( noise_model == small ) {
             this->noise_model = noise_model;
         }
         else if ( noise_model == medium ) {
@@ -321,10 +321,11 @@ CDW::~CDW( void ) {};
             this->noise_model = noise_model;
         }
         else {
-            printf("%s '%s' %s: %s, %s, or %s\n",
+            printf("%s '%s' %s: %s, %s, %s, or %s\n",
                     "the input string",
                     noise_model.c_str(),
                     "was not recognized as one of the following options",
+                    none.c_str(),
                     small.c_str(),
                     medium.c_str(),
                     large.c_str());

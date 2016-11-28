@@ -435,6 +435,33 @@ class CDW {
      *          - mean velocity of the phase during transition per impurity
      *          - mean number of transitions per unit time per impurity
      */
+   
+    /*
+     *
+     * proportional to current density
+     * update at each evolution step
+     *
+     */
+    void update_mean_momentum ( void ) ;
+
+    /*
+     * curious to see how far the phase at impurity site is from im_phase
+     *
+     * use avg( fmod( phi, im_phase ) ) for each site
+     * then compute average across all sites
+     */
+    void update_mean_dist_to_im_phase ( void ) ;
+
+    /*
+     *
+     * excluding electric field, momentum should be conserved
+     *
+     */
+    void check_zero_momentum ( void ); 
+
+
+
+
 
     // results output
 

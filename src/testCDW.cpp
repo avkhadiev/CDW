@@ -17,7 +17,7 @@ int test_lattice ( void ) {
 }
 
 
-int run_simulation ( void ) { 
+int test_default ( void ) { 
     std::cout<<"**************************************************"<<std::endl;
     std::cout<<"WILL TEST:                                        "<<std::endl;
     std::cout<<"    - RUN DEFAULT SIMULATION                      "<<std::endl;
@@ -25,8 +25,92 @@ int run_simulation ( void ) {
     
     CDW simulation;                                       // declare simulation
     
-    simulation.set_dc_field( 0.0 );                      
-    simulation.set_noise_model( "none" );                 // noise
+    simulation.set_dc_field( 0.0 );                       // no field                
+    simulation.set_noise_model( "none" );                 // no noise
+    simulation.display_settings();                        // display settings
+    
+    simulation.setup();                                   // setup
+    simulation.observe_sites();                           // observe some sites
+
+    simulation.run_simulation();                          // run simulation
+    
+    printf("done testing simulation run!\n");
+    return 0;
+}
+
+int test_field_small ( void ) { 
+    std::cout<<"**************************************************"<<std::endl;
+    std::cout<<"WILL TEST:                                        "<<std::endl;
+    std::cout<<"    - RUN SMALL FIELD SIMULATION                  "<<std::endl;
+    std::cout<<"**************************************************"<<std::endl;
+    
+    CDW simulation;                                       // declare simulation
+    
+    simulation.set_dc_field( 0.01 );                      // small field                
+    simulation.set_noise_model( "none" );                 // no noise
+    simulation.display_settings();                        // display settings
+    
+    simulation.setup();                                   // setup
+    simulation.observe_sites();                           // observe some sites
+
+    simulation.run_simulation();                          // run simulation
+    
+    printf("done testing simulation run!\n");
+    return 0;
+}
+
+int test_field_large ( void ) { 
+    std::cout<<"**************************************************"<<std::endl;
+    std::cout<<"WILL TEST:                                        "<<std::endl;
+    std::cout<<"    - RUN LARGE FIELD SIMULATION                  "<<std::endl;
+    std::cout<<"**************************************************"<<std::endl;
+    
+    CDW simulation;                                       // declare simulation
+    
+    simulation.set_dc_field( 1.0 );                       // large field                
+    simulation.set_noise_model( "none" );                 // no noise
+    simulation.display_settings();                        // display settings
+    
+    simulation.setup();                                   // setup
+    simulation.observe_sites();                           // observe some sites
+
+    simulation.run_simulation();                          // run simulation
+    
+    printf("done testing simulation run!\n");
+    return 0;
+}
+
+int test_noise_medium ( void ) { 
+    std::cout<<"**************************************************"<<std::endl;
+    std::cout<<"WILL TEST:                                        "<<std::endl;
+    std::cout<<"    - RUN LARGE FIELD SIMULATION                  "<<std::endl;
+    std::cout<<"**************************************************"<<std::endl;
+    
+    CDW simulation;                                       // declare simulation
+    
+    simulation.set_dc_field( 0.0 );                       // no field                
+    simulation.set_noise_model( "medium" );               // medium noise
+    simulation.display_settings();                        // display settings
+    
+    simulation.setup();                                   // setup
+    simulation.observe_sites();                           // observe some sites
+
+    simulation.run_simulation();                          // run simulation
+    
+    printf("done testing simulation run!\n");
+    return 0;
+}
+
+int test_noise_large ( void ) { 
+    std::cout<<"**************************************************"<<std::endl;
+    std::cout<<"WILL TEST:                                        "<<std::endl;
+    std::cout<<"    - RUN LARGE FIELD SIMULATION                  "<<std::endl;
+    std::cout<<"**************************************************"<<std::endl;
+    
+    CDW simulation;                                       // declare simulation
+    
+    simulation.set_dc_field( 0.0 );                       // no field                
+    simulation.set_noise_model( "large" );                // large noise
     simulation.display_settings();                        // display settings
     
     simulation.setup();                                   // setup
@@ -59,8 +143,20 @@ int main(int argc, const char** argv) {
             if ( current_arg == "lattice" ) {
                 test_lattice();
             }
-            else if ( current_arg == "run"     ) {
-                run_simulation();
+            else if ( current_arg == "default"     ) {
+                test_default();
+            }
+            else if ( current_arg == "field_small"     ) {
+                test_field_small();
+            }
+            else if ( current_arg == "field_large"     ) {
+                test_field_large();
+            }
+            else if ( current_arg == "noise_medium"    ) {
+                test_noise_medium();
+            }
+            else if ( current_arg == "noise_large"     ) {
+                test_noise_large();
             }
             else {
                 fprintf(stderr, 
