@@ -16,8 +16,8 @@ const double PI = 3.141592653589793;
 // random number generation
 // construct a trivial random generator engine from a time-based seed:
 unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-std::ranlux24 generator( seed );
-std::uniform_real_distribution<double> noise_distribution(0,1);
+std::mt19937_64 generator( seed );
+std::normal_distribution<double> noise_distribution(0.0,0.5);
 std::uniform_real_distribution<double> phase_distribution(0,2);
 
 // declare known elasticity models
@@ -49,8 +49,12 @@ CDW::CDW( void ) {
     dc_field    = DEF_DC_FIELD       ;          // dc electric field
     // vector variables
     lattice         = std::vector<LatticeSite>( num_sites ) ;
-    impurities      = std::vector<const LatticeSite *>( 0 )        ;
+    impurities      = std::vector<const LatticeSite *>( 0 ) ;
     observed_sites  = std::vector<const LatticeSite *>( 0 ) ;
+    // statistics
+    mean_momentum         = 0;
+    mean_dist_to_im_phase = 0;
+    zero_momentum         = 0;
 };
 
 // destructor
@@ -519,6 +523,7 @@ CDW::~CDW( void ) {};
             generate_impurity( required_site, 
                                 im_strength, 
                                 phase_distribution( generator ) );
+            required_site->phase.phase = required_site->im_phase;
             this->impurities.push_back( (const LatticeSite *)required_site );
         }
         return 0;
@@ -689,6 +694,74 @@ CDW::~CDW( void ) {};
         return observed;
     }
 
+// statistics 
+/*
+ * functions for collecting useful statistics 
+ */
+
+    /*
+     * UPDATE MEAN MOMENTUM
+     *
+     * proportional to current density
+     * update at each evolution step
+     *
+     */
+    void CDW::update_mean_momentum ( void ) {
+
+        double momentum_sum = 0;
+
+        for(size_t i = 0; i < num_sites; ++i){
+            momentum_sum += lattice.at(i).phase.rate_of_change;
+        }
+
+        double momentum_avg_this_step = momentum_sum / (double)num_sites;
+        // TODO writeout average momentum for this step
+
+        this->mean_momentum += momentum_avg_this_step;
+
+        return;
+    }
+
+
+    /*
+     * curious to see how far the phase at impurity site is from im_phase
+     *
+     * use avg( fmod( phi, im_phase ) ) for each site
+     * then compute average across all sites
+     */
+    void CDW::update_mean_dist_to_im_phase( void ){
+        
+        double dist_sum = 0;
+
+        for(size_t i = 0; i < impurities.size(); ++i){
+            double phase     = impurities.at(i)->phase.phase;
+            double pin_phase = impurities.at(i)->im_phase;
+
+            dist_sum += pow( fabs( fmod( phase, pin_phase ) ), 2.0);
+        }
+
+        double dist_sum_this_step = sqrt(dist_sum / (double)impurities.size());
+        this->mean_dist_to_im_phase += dist_sum_this_step;
+
+        return;
+    }
+
+    /*
+     *
+     * check zero momentum
+     * excluding electric field, momentum should be conserved
+     *
+     */
+    void CDW::check_zero_momentum( void ){
+        
+        for(size_t i = 0; i < num_sites; ++i){
+            // modulo external field, momentum should be conserved
+            zero_momentum += lattice.at(i).phase.rate_of_change - dc_field; 
+        }
+
+        return;
+    }
+
 // dynamics
 /*
  * functions for updating the state of the system
@@ -705,15 +778,15 @@ CDW::~CDW( void ) {};
      */
      inline double CDW::noise( void ) {
         
-        double random = noise_distribution( generator );
-        double noise_force;
+        double noise_force = noise_distribution( generator );
+        //double noise_force;
 
-        if (random >= 0.5) {
-            noise_force = 1;
-        }
-        if (random < 0.5) {
-            noise_force = -1;
-        }
+        //if (random >= 0.5) {
+        //    noise_force = 1;
+        //}
+        //if (random < 0.5) {
+        //    noise_force = -1;
+        //}
 
         if( get_noise_model() == none ) {
             return 0;
@@ -980,8 +1053,23 @@ CDW::~CDW( void ) {};
             evolve( 1 );                // it is possible to not write out
                                         // at every step by changing this
                                         // argument
+            // collect statistics
+            check_zero_momentum();
+            update_mean_momentum();
+            update_mean_dist_to_im_phase();
+            
+            // write out
             write_observed_sites();
         }
+
+        // average statistics in time
+        mean_momentum = mean_momentum / (double)num_steps;
+        mean_dist_to_im_phase = mean_dist_to_im_phase / (double)num_steps;
+        
+        printf("mean momentum %.6f\n",         mean_momentum);
+        printf("mean_dist_to_im_phase %.6f\n", mean_dist_to_im_phase);
+        // check_validity:
+        printf("momentum check yields %.6f\n", zero_momentum);
        
         return;
     }

@@ -19,11 +19,11 @@
 #define MIN_SITES       2                           // min num of lattice sites
 #define MAX_IM_STRENGTH 3                           // max impurity strength
 #define DEF_INI_TIME    0                           // simulation start time
-#define DEF_TIME_STEP   0.001                       // default time step
+#define DEF_TIME_STEP   0.01                        // default time step
 #define DEF_NUM_STEPS   50000                       // number of time steps
 // model-dependent constants
 #define DEF_SITES       12                          // default num of sites
-#define DEF_IM_STRENGTH 1                           // default strength
+#define DEF_IM_STRENGTH 0                           // default strength
 #define DEF_IM_PHASE    0                           // default pinning phase
 #define DEF_IM_SPACING  3                           // default impurity spacing
 #define DEF_INI_PHASE   0                           // default initial phase
@@ -437,12 +437,24 @@ class CDW {
      */
    
     /*
+     * mean momentum
+     */
+    double mean_momentum;
+
+    /*
+     * UPDATE MEAN MOMENTUM
      *
      * proportional to current density
      * update at each evolution step
      *
      */
     void update_mean_momentum ( void ) ;
+
+
+    /*
+     * mean deviation from impurity phase
+     */
+    double mean_dist_to_im_phase;
 
     /*
      * curious to see how far the phase at impurity site is from im_phase
@@ -453,15 +465,16 @@ class CDW {
     void update_mean_dist_to_im_phase ( void ) ;
 
     /*
+     * for checking momentum conservation
+     */
+    double zero_momentum;
+
+    /*
      *
      * excluding electric field, momentum should be conserved
      *
      */
     void check_zero_momentum ( void ); 
-
-
-
-
 
     // results output
 
@@ -486,4 +499,15 @@ class CDW {
      *      int, 0 on success, 1 on failure
      */
     int write_observed_sites( void );
+
+    /*
+     * WRITE_OBSERVED_SITES
+     *
+     * input:  
+     *      void
+     *
+     * output:
+     *      int, 0 on success, 1 on failure
+     */
+    int write_statistics( void );
 };
