@@ -26,7 +26,7 @@ int test_default ( void ) {
     CDW simulation;                                       // declare simulation
     
     simulation.set_dc_field( 0.0 );                       // no field                
-    simulation.set_noise_model( "none" );                 // no noise
+    simulation.set_noise_amp( 0.0 );                      // no noise
     simulation.display_settings();                        // display settings
     
     simulation.setup();                                   // setup
@@ -46,8 +46,10 @@ int test_field_small ( void ) {
     
     CDW simulation;                                       // declare simulation
     
+    simulation.set_im_strength( 1.0 );                     // with impurities
+    simulation.set_im_spacing( 4 ) ;                       // with impurities
     simulation.set_dc_field( 0.01 );                      // small field                
-    simulation.set_noise_model( "none" );                 // no noise
+    simulation.set_noise_amp( 0.0);                 // no noise
     simulation.display_settings();                        // display settings
     
     simulation.setup();                                   // setup
@@ -67,8 +69,10 @@ int test_field_large ( void ) {
     
     CDW simulation;                                       // declare simulation
     
+    simulation.set_im_strength( 1.0 );                     // with impurities
+    simulation.set_im_spacing( 4 ) ;                       // with impurities
     simulation.set_dc_field( 1.0 );                       // large field                
-    simulation.set_noise_model( "none" );                 // no noise
+    simulation.set_noise_amp( 0.0 );                 // no noise
     simulation.display_settings();                        // display settings
     
     simulation.setup();                                   // setup
@@ -89,7 +93,9 @@ int test_noise_medium ( void ) {
     CDW simulation;                                       // declare simulation
     
     simulation.set_dc_field( 0.0 );                       // no field                
-    simulation.set_noise_model( "medium" );               // medium noise
+    simulation.set_im_strength( 1.0 );                     // with impurities
+    simulation.set_im_spacing( 4 ) ;                       // with impurities
+    simulation.set_noise_amp( 0.5 );                      // medium noise
     simulation.display_settings();                        // display settings
     
     simulation.setup();                                   // setup
@@ -109,8 +115,10 @@ int test_noise_large ( void ) {
     
     CDW simulation;                                       // declare simulation
     
+    simulation.set_im_strength( 1.0 );                // with impurities
+    simulation.set_im_spacing( 4 );                      // with impurities
     simulation.set_dc_field( 0.0 );                       // no field                
-    simulation.set_noise_model( "large" );                // large noise
+    simulation.set_noise_amp( 1.0 );                      // large noise
     simulation.display_settings();                        // display settings
     
     simulation.setup();                                   // setup

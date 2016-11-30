@@ -17,7 +17,7 @@ const double PI = 3.141592653589793;
 // construct a trivial random generator engine from a time-based seed:
 unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 std::mt19937_64 generator( seed );
-std::normal_distribution<double> noise_distribution(0.0,0.5);
+std::normal_distribution<double> noise_distribution(0.0,1.0);
 std::uniform_real_distribution<double> phase_distribution(0,2);
 
 // declare known elasticity models
@@ -25,16 +25,12 @@ std::string inf_range          = "infinite range"           ;
 std::string near_neighbor      = "nearest neighbor"         ;
 std::string next_near_neighbor = "next to nearest neighbor" ;
 
-// declare known noise models
-std::string none               = "none"                     ; 
-std::string small              = "small"                    ; 
-std::string medium             = "medium"                   ;
-std::string large              = "large"                    ;
-
 // constructor
 CDW::CDW( void ) {
     // simulation-dependent settings
     is_setup    = 0                  ;          // was the simulation set?
+    writeout    = 0                  ;          // write out each phase?
+    steps_ignore= STEPS_IGNORE       ;          // stats won't be collected
     ini_time    = DEF_INI_TIME       ;          // initial time
     time_step   = DEF_TIME_STEP      ;          // length of time step
     num_steps   = DEF_NUM_STEPS      ;          // number of time steps
@@ -43,12 +39,13 @@ CDW::CDW( void ) {
     im_spacing  = DEF_IM_SPACING     ;          // impurity spacing
     im_strength = DEF_IM_STRENGTH    ;          // impurity strength
     ini_phase   = DEF_INI_PHASE      ;          // initial phases
-    temperature = DEF_TEMPERATURE    ;          // temperature
     j_model     = "nearest neighbor" ;          // elasticity model
     j_strength  = DEF_J_STRENGTH     ;          // elasticity coefficient
+    noise_amp   = DEF_NOISE_AMP      ;          // thermal noise amplitude
     dc_field    = DEF_DC_FIELD       ;          // dc electric field
     // vector variables
     lattice         = std::vector<LatticeSite>( num_sites ) ;
+    stoch_forcing   = std::vector<double>( num_sites )      ;
     impurities      = std::vector<const LatticeSite *>( 0 ) ;
     observed_sites  = std::vector<const LatticeSite *>( 0 ) ;
     // statistics
@@ -236,6 +233,24 @@ CDW::~CDW( void ) {};
     };
 
     /*
+     * set noise amplitude
+     * 
+     * input:
+     *      double ini_phase, initial phase to initialize at all sites
+     * 
+     * output:
+     *      int 0, on success, 1 on failure
+     */
+    int CDW::set_noise_amp ( double noise_amp ) {
+        if (is_setup) {
+            printf("%s\n", "The simulation has already been set up");
+            return 1;
+        }
+        CDW::noise_amp = noise_amp;
+        return 0;
+    };
+
+    /*
      * set j_model
      * 
      * input:
@@ -295,49 +310,6 @@ CDW::~CDW( void ) {};
         return 0;
     };
 
-    
-    /*
-     * set_noise_model
-     * 
-     * input:
-     *      char *noise_model, a model for noise to be used in the simulation 
-     * 
-     * output:
-     *      int 0, on success, 1 on failure
-     */
-    int CDW::set_noise_model ( std::string noise_model ) {
-        if (is_setup) {
-            printf("%s\n", "The simulation has already been set up");
-            return 1;
-        }
-
-        // match the input string to known models:
-        if ( noise_model == none  ) {
-            this->noise_model = noise_model;
-        }
-        else if ( noise_model == small ) {
-            this->noise_model = noise_model;
-        }
-        else if ( noise_model == medium ) {
-            this->noise_model = noise_model;
-        }
-        else if ( noise_model == large ) {
-            this->noise_model = noise_model;
-        }
-        else {
-            printf("%s '%s' %s: %s, %s, %s, or %s\n",
-                    "the input string",
-                    noise_model.c_str(),
-                    "was not recognized as one of the following options",
-                    none.c_str(),
-                    small.c_str(),
-                    medium.c_str(),
-                    large.c_str());
-            return 1;
-        }
-        return 0;
-    };
-
     /*
      * set DC electric field
      * 
@@ -376,7 +348,7 @@ CDW::~CDW( void ) {};
         printf("%s: %.3f\n", "temperature        " , get_temperature()     ) ;    
         printf("%s: %s\n"  , "elasticity model   " , get_j_model().c_str() ) ;    
         printf("%s: %.3f\n", "elasticity strength" , get_j_strength()      ) ;    
-        printf("%s: %s\n"  , "noise model        " , get_noise_model().c_str() ) ;  
+        printf("%s: %.3f\n", "noise amplutude    " , get_noise_amp()       ) ;  
         printf("%s: %.3f\n", "DC electric field  " , get_dc_field()        ) ;    
         return;
     }
@@ -568,6 +540,7 @@ CDW::~CDW( void ) {};
             return 1;
         }
 
+        this->time = this->get_ini_time(); 
         this->lattice.clear();
         this->impurities.clear();
         this->observed_sites.clear();
@@ -776,33 +749,26 @@ CDW::~CDW( void ) {};
      *   output: 
      *      void:
      */
-     inline double CDW::noise( void ) {
+     inline void CDW::noise( void ) {
         
-        double noise_force = noise_distribution( generator );
-        //double noise_force;
+        double amplitude = this->noise_amp;
+        double random_force;
+        double noise_avg = 0;
 
-        //if (random >= 0.5) {
-        //    noise_force = 1;
-        //}
-        //if (random < 0.5) {
-        //    noise_force = -1;
-        //}
+        for (size_t i = 0; i < num_sites; ++i) {
+            random_force = amplitude * noise_distribution( generator );
+            stoch_forcing.at(i) = random_force;
+            noise_avg += random_force;
+        }
 
-        if( get_noise_model() == none ) {
-            return 0;
+        noise_avg = noise_avg / (double)num_sites;
+
+        // SUBTRACT AVG OF GENERATED FORCE FROM EACH TO MINIMIZE EFFECTS
+        // OF PSEURANDOMNESS
+        for (size_t i = 0; i < num_sites; ++i) {
+            stoch_forcing.at(i) = stoch_forcing.at(i) - noise_avg;
         }
-        else if( get_noise_model() == small ){
-            return 0.2 * noise_force; 
-        }
-        else if( get_noise_model() == medium ){
-            return 0.5 * noise_force; 
-        }
-        else if( get_noise_model() == large ){
-            return 1.0 * noise_force;
-        }
-        else{
-            return 0;
-        }
+
      }
 
     /*
@@ -839,7 +805,10 @@ CDW::~CDW( void ) {};
             elastic_force += j_strength * ( right_phase - cdw_phase );
             elastic_force += j_strength * ( left_phase  - cdw_phase );
 
-            double rate = elastic_force + pinning_force + noise() + dc_field;
+            double rate = elastic_force 
+                            + pinning_force 
+                            + stoch_forcing.at(i) 
+                            + dc_field;
             site->phase.rate_of_change = rate;
 
             return rate;
@@ -894,6 +863,9 @@ CDW::~CDW( void ) {};
      */
     void CDW::step( void ) {
         std::vector<LatticeSite> new_lattice = get_lattice();
+
+        // generate a vector of stochastic forces (for each site)
+        noise();   
 
         // compute all rates of change, don't update sites yet (need old values 
         // to compute all the rates, and the new phases)
@@ -955,6 +927,12 @@ CDW::~CDW( void ) {};
      *      int, 0 on success, 1 on failure
      */
     int CDW::write_observed_sites( void ){
+
+        // if specified not to write out phases...
+        if ( !(writeout) ) {
+            // ignore
+            return 0;
+        }
 
         size_t observations = observed_sites.size();
         ObservedPhase observed;
@@ -1035,6 +1013,44 @@ CDW::~CDW( void ) {};
         return 0;
     }
 
+    
+    /*
+     * WRITE_STATISTICS
+     *
+     * input:  
+     *      void
+     *
+     * output:
+     *      int, 0 on success, 1 on failure
+     */
+    int CDW::write_statistics( void ){
+       
+        // prepare for writeout
+        std::ofstream writeout;
+        // EDIT AS NECESSARY
+        std::string   filename = "output/control_impure_field.txt";
+        
+        writeout.open( filename, std::ios::out | std::ios::app );
+        
+        // EDIT AS NECESSARY
+        if( writeout.is_open() ) {
+            writeout << std::to_string( mean_momentum );
+            writeout << "     ";
+            writeout << std::to_string( dc_field );
+            writeout << "\n";
+            writeout.close();
+        }
+        else{
+            fprintf(stderr, 
+                        "Unable to open file %s\n", 
+                        filename.c_str());
+            perror( "open:" );
+            return 1;
+        }
+
+        return 0;
+    }
+
 
     /*
      * RUN SIMULATION
@@ -1046,29 +1062,57 @@ CDW::~CDW( void ) {};
         }
 
         // calculate final time:
-        double final_time = ini_time + num_steps * time_step;
+        double final_time  = ini_time + num_steps * time_step;
+        double time_ignore = ini_time + steps_ignore * time_step;
+
+        if (time_ignore > final_time) {
+            printf("time_ignore %f > final_time %f", 
+                    time_ignore, 
+                    final_time);
+            exit( EXIT_FAILURE );
+        }
 
         write_observed_sites();         // write out the initial values
-        while ( time < final_time ) {
+        while ( time < time_ignore ) {
             evolve( 1 );                // it is possible to not write out
                                         // at every step by changing this
                                         // argument
-            // collect statistics
-            check_zero_momentum();
-            update_mean_momentum();
-            update_mean_dist_to_im_phase();
             
+            // don't collect statistics initially
+                                        
             // write out
             write_observed_sites();
         }
 
-        // average statistics in time
-        mean_momentum = mean_momentum / (double)num_steps;
-        mean_dist_to_im_phase = mean_dist_to_im_phase / (double)num_steps;
+
+        assert( !( time > final_time) );
         
+        while ( time < final_time ) {
+            evolve( 1 );                // it is possible to not write out
+                                        // at every step by changing this
+                                        // argument
+            
+            // don't collect statistics initially
+            // collect statistics
+            check_zero_momentum();
+            update_mean_momentum();
+            update_mean_dist_to_im_phase();
+                                        
+            // write out
+            write_observed_sites();
+        }
+
+        size_t steps = num_steps - steps_ignore;
+
+        // average statistics in time
+        mean_momentum = mean_momentum / (double)steps;
+        mean_dist_to_im_phase = mean_dist_to_im_phase / (double)steps;
+       
+        //write_statistics();                   // writeout stats in file
+
         printf("mean momentum %.6f\n",         mean_momentum);
         printf("mean_dist_to_im_phase %.6f\n", mean_dist_to_im_phase);
-        // check_validity:
+        //check_validity:
         printf("momentum check yields %.6f\n", zero_momentum);
        
         return;

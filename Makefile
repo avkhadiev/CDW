@@ -15,6 +15,9 @@ all: test run
 test:
 	$(CC) $(CFLAGS) src/testCDW.cpp -o bin/testCDW
 
+control_field:
+	$(CC) $(CFLAGS) src/control_field.cpp -o bin/control_field
+
 run:
 	$(CC) $(CFLAGS) src/runCDW.cpp -o bin/runCDW
 

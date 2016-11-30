@@ -52,3 +52,11 @@ Mon Nov 28 21:03:40 EST 2016
     elasticity, I get order of 100 (plus or minus) overall change in momentum.
     The mean momentum then is ~10^(-4). This may suggest that anything beyond 
     that precision is not reliable, unless I fix the random number generation...
+
+
+Wed Nov 30 12:01:02 EST 2016
+
+    after implementing Prof. Marston's suggestion, my momentum is conserved 
+    with noise! The suggestion was the following: at each step, generate 
+    stochastic forcing for each site, and then subtract the average of all 
+    generate force at this time step from each force. 

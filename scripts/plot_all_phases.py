@@ -26,7 +26,7 @@ for filename in text_files:
         fig.suptitle( plotname , fontsize=10)
         plt.xlabel("Time")
         plt.ylabel("%s" % (filename.split('_')[0]))
-        fig.savefig( "%s/%s/%s.%s" % ( dirname, "plots", plotname, ".png"))
+        fig.savefig( "%s/%s/%s.%s" % ( dirname, "plots", plotname, "png"))
         plt.close()
 
 

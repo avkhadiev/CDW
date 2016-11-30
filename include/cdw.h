@@ -21,14 +21,16 @@
 #define DEF_INI_TIME    0                           // simulation start time
 #define DEF_TIME_STEP   0.01                        // default time step
 #define DEF_NUM_STEPS   50000                       // number of time steps
+#define STEPS_IGNORE    20000                       // stats won't be collected
+#define WRITEOUT        0                           // writeout each phase?
 // model-dependent constants
-#define DEF_SITES       12                          // default num of sites
+#define DEF_SITES       100                         // default num of sites
 #define DEF_IM_STRENGTH 0                           // default strength
 #define DEF_IM_PHASE    0                           // default pinning phase
-#define DEF_IM_SPACING  3                           // default impurity spacing
+#define DEF_IM_SPACING  4                           // default impurity spacing
 #define DEF_INI_PHASE   0                           // default initial phase
 #define DEF_J_STRENGTH  1                           // default elasticity 
-#define DEF_TEMPERATURE 100                         // default temperature, K
+#define DEF_NOISE_AMP   0                           // default noise amplitude
 #define DEF_ELASTICITY  1                           // default CDW elasticity
 #define DEF_DC_FIELD    0                           // dc electric field
 
@@ -87,7 +89,7 @@ class CDW {
         virtual ~CDW( void );                        // destructor
 
     // simulation settings
-        
+    
         // set parameters
         int set_ini_time    ( double ini_time    ) ; // initial time
         int set_time_step   ( double time_step   ) ; // length of time step
@@ -108,8 +110,7 @@ class CDW {
         int set_temperature ( double temperature ) ; // temperature
         int set_j_model     ( std::string j_model) ; // elasticity model
         int set_j_strength  ( double j_strength  ) ; // elasticity coefficient
-        int set_noise_model ( std::string noise_model ) ; // TODO noise model
-        int set_noise       ( double noise       ) ; // TODO noise intensity
+        int set_noise_amp   ( double noise_amp ) ;   // noise amplitude (~T)
         int set_dc_field    ( double dc_field    ) ; // dc electric field
 
         // get parameters 
@@ -120,7 +121,8 @@ class CDW {
         double      get_temperature  ( void ) { return temperature ; }               
         std::string get_j_model      ( void ) { return j_model     ; }               
         double      get_j_strength   ( void ) { return j_strength  ; }               
-        std::string get_noise_model  ( void ) { return noise_model ; } // TODO              
+        double      get_noise_amp    ( void ) { return noise_amp ; } 
+
         double      get_dc_field     ( void ) { return dc_field    ; } 
         
         // vector values
@@ -162,6 +164,7 @@ class CDW {
    
         int is_setup;                               // was the simulation set?
                                                     // 1 if was, 0 otherwise
+        int writeout;                               // writeout each phase?
        
         /*
          * INITIAL PHASE
@@ -205,11 +208,10 @@ class CDW {
 
         /*
          * THERMAL NOISE
-         *
-         * TODO implementation of thermal noise
          */
-        inline double noise( void ) ;               // thermal noise
-        std::string noise_model     ;
+        inline void noise( void )       ;           // thermal noise with rng
+        std::vector<double> stoch_forcing ;         // stoch force for each site
+        double noise_amp         ;                  // noise amplitude
 
         /*
          * ELASTICITY MODELS
@@ -312,10 +314,11 @@ class CDW {
         /*
          * TIME: START, NUMBER OF STEPS, LENGTH OF EACH STEP
          */
-        double ini_time  ;                            // specifies initial time
-        double time      ;                            // keeps track of time
-        double time_step ;                            // length of each step
-        size_t num_steps ;                            // number of steps
+        double ini_time    ;                          // specifies initial time
+        double time        ;                          // keeps track of time
+        double time_step   ;                          // length of each step
+        size_t num_steps   ;                          // number of steps
+        size_t steps_ignore ;                          // stats won't be collected
 
         /*
          *  COMPUTE RATE
@@ -501,7 +504,7 @@ class CDW {
     int write_observed_sites( void );
 
     /*
-     * WRITE_OBSERVED_SITES
+     * WRITE_STATISTICS
      *
      * input:  
      *      void
