@@ -11,7 +11,7 @@ int free( void ) {
     
     simulation.set_num_sites( 100 );
     simulation.set_im_spacing( 4 );
-    simulation.set_noise_amp(   0.0);                     // no noise
+    simulation.set_noise_amp(   0.5 );                    // no noise
     simulation.set_im_strength( 0.0 );                    // no impurities
     
     simulation.display_settings();                        // display settings
@@ -40,19 +40,26 @@ int impure( void ) {
     
     simulation.set_num_sites( 100 );
     simulation.set_im_spacing( 4 );
-    simulation.set_noise_amp(  0.0 );                 // no noise
+    simulation.set_noise_amp(  0.8 );                     // some noise?
     simulation.set_im_strength( 1.0 );                    // with impurities
     
     simulation.display_settings();                        // display settings
-    
-    for( double i = 0.0; i <= 1.0; i = i + 0.02 ){
+   
+    for( double i = 0.0; i <= 0.2; i = i + 0.002 ){
         simulation.set_dc_field( i );                     // set new field
         simulation.setup();                               // setup
         simulation.display_settings();                    // display settings
         simulation.run_simulation();                      // run simulation
         simulation.uninstall();                           // uninstall
     }
-    
+
+    for( double i = 0.2; i <= 1.0; i = i + 0.02 ){
+        simulation.set_dc_field( i );                     // set new field
+        simulation.setup();                               // setup
+        simulation.display_settings();                    // display settings
+        simulation.run_simulation();                      // run simulation
+        simulation.uninstall();                           // uninstall
+    }
     
     printf("done running control experiment!\n");
     return 0;

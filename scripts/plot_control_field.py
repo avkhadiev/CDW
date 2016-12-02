@@ -21,11 +21,15 @@ for filename in text_files:
             field.append( cols[1] );
         print("making a plot %s" % ( plotname ))
         fig = plt.figure()
-        plt.plot( field, velocity )
+        plt.scatter( field, velocity )
         fig.suptitle( plotname , fontsize=20)
         plt.xlabel("Electric Field")
         plt.ylabel("Average Phase Velocity")
-        fig.savefig( "%s/%s/%s.%s" % ( dirname, "plots", plotname, "png"))
+        plt.yscale('log')
+        plt.xscale('log')
+        plt.ylim(0.000001, 1)
+        plt.xlim(0.01, 1)
+        fig.savefig( "%s/%s/%s.%s" % ( 'output', "plots", plotname, "png"))
         plt.close()
 
 

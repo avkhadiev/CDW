@@ -710,10 +710,10 @@ CDW::~CDW( void ) {};
             double phase     = impurities.at(i)->phase.phase;
             double pin_phase = impurities.at(i)->im_phase;
 
-            dist_sum += pow( fabs( fmod( phase, pin_phase ) ), 2.0);
+            dist_sum += fmod( phase - pin_phase, 2.0);
         }
 
-        double dist_sum_this_step = sqrt(dist_sum / (double)impurities.size());
+        double dist_sum_this_step = (dist_sum / (double)impurities.size());
         this->mean_dist_to_im_phase += dist_sum_this_step;
 
         return;
@@ -1108,7 +1108,7 @@ CDW::~CDW( void ) {};
         mean_momentum = mean_momentum / (double)steps;
         mean_dist_to_im_phase = mean_dist_to_im_phase / (double)steps;
        
-        //write_statistics();                   // writeout stats in file
+        write_statistics();                   // writeout stats in file
 
         printf("mean momentum %.6f\n",         mean_momentum);
         printf("mean_dist_to_im_phase %.6f\n", mean_dist_to_im_phase);
